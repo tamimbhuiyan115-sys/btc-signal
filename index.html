@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BTC সিগনাল">
+<meta name="theme-color" content="#0f1417">
+<title>BTC সিগনাল</title>
+<style>
+:root {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --fg: #14181b;
+  --muted: #5b676e;
+  --line: #dce2df;
+  --accent: #0b6e6e;
+  --accent-fg: #ffffff;
+  --buy: #0e7f45;
+  --buy-bg: #e1f3e8;
+  --sell: #c1332c;
+  --sell-bg: #fbe6e4;
+  --hold: #96680a;
+  --hold-bg: #f8eed6;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1417;
+    --surface: #182027;
+    --fg: #e8eceb;
+    --muted: #94a1a8;
+    --line: #28323a;
+    --accent: #3fb8b0;
+    --accent-fg: #06201e;
+    --buy: #4cc98a;
+    --buy-bg: #12301f;
+    --sell: #f0726b;
+    --sell-bg: #3a1a18;
+    --hold: #e0b04c;
+    --hold-bg: #35290e;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, system-ui, "Segoe UI", "Noto Sans Bengali", "Kohinoor Bangla", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  padding-block: max(20px, env(safe-area-inset-top, 0px)) max(32px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font-size: 1.25rem; margin: 0; letter-spacing: -0.01em; }
+select {
+  font: inherit; color: var(--fg); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+}
+button.go {
+  font: inherit; font-weight: 600; font-size: 1.05rem;
+  background: var(--accent); color: var(--accent-fg);
+  border: 0; border-radius: 14px; padding: 16px; width: 100%;
+  cursor: pointer;
+}
+button.go:disabled { opacity: 0.6; cursor: progress; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.auto { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.9rem; }
+.auto input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+.verdict { border-radius: 16px; padding: 20px; border: 1px solid var(--line); background: var(--surface); }
+.verdict .label { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.verdict .word { font-size: 2.6rem; font-weight: 800; line-height: 1.1; margin: 4px 0 8px; letter-spacing: -0.02em; }
+.verdict .price { font-variant-numeric: tabular-nums; color: var(--muted); }
+.verdict.buy { background: var(--buy-bg); border-color: var(--buy); }
+.verdict.buy .word { color: var(--buy); }
+.verdict.sell { background: var(--sell-bg); border-color: var(--sell); }
+.verdict.sell .word { color: var(--sell); }
+.verdict.hold { background: var(--hold-bg); border-color: var(--hold); }
+.verdict.hold .word { color: var(--hold); }
+.verdict p { margin: 8px 0 0; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px; }
+.card h2 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
+.tf { border-top: 1px solid var(--line); padding: 10px 0; }
+.tf:first-of-type { border-top: 0; }
+.tf summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
+.tf summary::-webkit-details-marker { display: none; }
+.pill { font-weight: 700; font-size: 0.85rem; padding: 3px 12px; border-radius: 999px; }
+.pill.buy { background: var(--buy-bg); color: var(--buy); }
+.pill.sell { background: var(--sell-bg); color: var(--sell); }
+.pill.hold { background: var(--hold-bg); color: var(--hold); }
+.tf ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 0.92rem; }
+.score { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+dl.levels { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: 10px 0 14px; font-variant-numeric: tabular-nums; }
+dl.levels dt { color: var(--muted); }
+dl.levels dd { margin: 0; font-weight: 600; text-align: right; }
+
+.note { font-size: 0.85rem; color: var(--muted); }
+.error { background: var(--sell-bg); color: var(--sell); border: 1px solid var(--sell); border-radius: 12px; padding: 12px 14px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BTC সিগনাল</h1>
+    <select id="pair" aria-label="কয়েন বেছে নিন">
+      <option value="BTC">BTC/USDT</option>
+      <option value="ETH">ETH/USDT</option>
+      <option value="SOL">SOL/USDT</option>
+      <option value="XRP">XRP/USDT</option>
+      <option value="BNB">BNB/USDT</option>
+      <option value="DOGE">DOGE/USDT</option>
+    </select>
+  </header>
+
+  <button class="go" id="go" type="button">এখনই বিশ্লেষণ করুন</button>
+  <label class="auto"><input type="checkbox" id="auto"> পেজ খোলা থাকলে প্রতি ৫ মিনিটে নিজে রিফ্রেশ</label>
+
+  <div id="error" class="error" hidden></div>
+
+  <section id="result" hidden>
+    <div id="verdict" class="verdict">
+      <div class="label" id="vpair"></div>
+      <div class="word" id="vword"></div>
+      <div class="price" id="vprice"></div>
+      <p id="vtext"></p>
+    </div>
+  </section>
+
+  <section id="levelsCard" class="card" hidden>
+    <h2>রেফারেন্স লেভেল (১ ঘণ্টার ATR ভিত্তিক)</h2>
+    <dl class="levels" id="levels"></dl>
+  </section>
+
+  <section id="tfCard" class="card" hidden>
+    <h2>টাইমফ্রেম অনুযায়ী</h2>
+    <div id="tfList"></div>
+  </section>
+
+  <p class="note" id="meta"></p>
+  <p class="note">⚠️ এটা আর্থিক পরামর্শ নয়। ইন্ডিকেটর ভিত্তিক সিগনালে লাভের নিশ্চয়তা নেই। যে টাকা হারালে সমস্যা নেই, শুধু সেটাই ব্যবহার করুন।</p>
+</div>
+
+<script>
+"use strict";
+var TF = [
+  { label: "১৫ মিনিট", ku: "15min", bn: "15m" },
+  { label: "১ ঘণ্টা", ku: "1hour", bn: "1h" },
+  { label: "৪ ঘণ্টা", ku: "4hour", bn: "4h" }
+];
+var $ = function (id) { return document.getElementById(id); };
+var timer = null;
+
+/* ---------- data ---------- */
+function getJSON(url) {
+  var ctrl = new AbortController();
+  var t = setTimeout(function () { ctrl.abort(); }, 12000);
+  return fetch(url, { signal: ctrl.signal }).then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).finally(function () { clearTimeout(t); });
+}
+function fetchKucoin(base, tf) {
+  var url = "https://api.kucoin.com/api/v1/market/candles?type=" + tf.ku + "&symbol=" + base + "-USDT";
+  return getJSON(url).then(function (j) {
+    if (j.code !== "200000" || !Array.isArray(j.data)) throw new Error("KuCoin response");
+    return j.data.slice(0, 500).reverse().map(function (r) {
+      return { t: +r[0] * 1000, o: +r[1], c: +r[2], h: +r[3], l: +r[4], v: +r[5] };
+    });
+  });
+}
+function fetchBinance(base, tf) {
+  var url = "https://data-api.binance.vision/api/v3/klines?symbol=" + base + "USDT&interval=" + tf.bn + "&limit=500";
+  return getJSON(url).then(function (j) {
+    return j.map(function (r) {
+      return { t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] };
+    });
+  });
+}
+function fetchAll(base) {
+  return Promise.all(TF.map(function (tf) { return fetchKucoin(base, tf); }))
+    .then(function (d) { return { source: "KuCoin", data: d }; })
+    .catch(function () {
+      return Promise.all(TF.map(function (tf) { return fetchBinance(base, tf); }))
+        .then(function (d) { return { source: "Binance (KuCoin থেকে ডেটা আনা যায়নি, দাম প্রায় একই)", data: d }; });
+    });
+}
+
+/* ---------- indicators ---------- */
+function ema(vals, span) {
+  var a = 2 / (span + 1), out = [vals[0]];
+  for (var i = 1; i < vals.length; i++) out.push(a * vals[i] + (1 - a) * out[i - 1]);
+  return out;
+}
+function rsi(closes, n) {
+  var a = 1 / n, g = 0, l = 0, out = [NaN];
+  for (var i = 1; i < closes.length; i++) {
+    var d = closes[i] - closes[i - 1];
+    var gain = Math.max(d, 0), loss = Math.max(-d, 0);
+    if (i === 1) { g = gain; l = loss; }
+    else { g = a * gain + (1 - a) * g; l = a * loss + (1 - a) * l; }
+    out.push(l === 0 ? 100 : 100 - 100 / (1 + g / l));
+  }
+  return out;
+}
+function atr(c, n) {
+  var a = 1 / n, v = c[0].h - c[0].l;
+  for (var i = 1; i < c.length; i++) {
+    var tr = Math.max(c[i].h - c[i].l, Math.abs(c[i].h - c[i - 1].c), Math.abs(c[i].l - c[i - 1].c));
+    v = a * tr + (1 - a) * v;
+  }
+  return v;
+}
+
+/* ---------- analysis (শেষ বন্ধ হওয়া ক্যান্ডেল) ---------- */
+function analyze(candles) {
+  if (candles.length < 60) throw new Error("ডেটা যথেষ্ট নয়");
+  var close = candles.map(function (x) { return x.c; });
+  var i = close.length - 2;
+  var e9 = ema(close, 9), e21 = ema(close, 21), e200 = ema(close, 200);
+  var r = rsi(close, 14);
+  var e12 = ema(close, 12), e26 = ema(close, 26);
+  var macd = e12.map(function (v, k) { return v - e26[k]; });
+  var sig = ema(macd, 9);
+  var hist = macd[i] - sig[i];
+  var vsum = 0;
+  for (var k = i - 19; k <= i; k++) vsum += candles[k].v;
+  var volAvg = vsum / 20;
+
+  var score = 0, reasons = [];
+  if (e9[i] > e21[i]) { score++; reasons.push("EMA9 > EMA21 (স্বল্পমেয়াদে ঊর্ধ্বমুখী)"); }
+  else { score--; reasons.push("EMA9 < EMA21 (স্বল্পমেয়াদে নিম্নমুখী)"); }
+  if (close[i] > e200[i]) { score++; reasons.push("দাম EMA200 এর উপরে (বড় ট্রেন্ড ঊর্ধ্বমুখী)"); }
+  else { score--; reasons.push("দাম EMA200 এর নিচে (বড় ট্রেন্ড নিম্নমুখী)"); }
+  if (r[i] < 30) { score++; reasons.push("RSI " + r[i].toFixed(1) + " (oversold)"); }
+  else if (r[i] > 70) { score--; reasons.push("RSI " + r[i].toFixed(1) + " (overbought)"); }
+  else reasons.push("RSI " + r[i].toFixed(1) + " (নিরপেক্ষ)");
+  if (hist > 0) { score++; reasons.push("MACD হিস্টোগ্রাম পজিটিভ"); }
+  else { score--; reasons.push("MACD হিস্টোগ্রাম নেগেটিভ"); }
+  if (candles[i].v > volAvg) reasons.push("ভলিউম গড়ের উপরে");
+
+  var decision = score >= 3 ? "BUY" : score <= -3 ? "SELL" : "HOLD";
+  return { decision: decision, score: score, reasons: reasons, price: close[i], time: candles[i].t };
+}
+
+function overall(results) {
+  var buy = 0, sell = 0;
+  results.forEach(function (x) { if (x.decision === "BUY") buy++; if (x.decision === "SELL") sell++; });
+  if (buy >= 2 && sell === 0) return "BUY";
+  if (sell >= 2 && buy === 0) return "SELL";
+  return "HOLD";
+}
+
+/* ---------- render ---------- */
+var TEXT = {
+  BUY: "বেশিরভাগ টাইমফ্রেম একমত: কেনার পক্ষে সিগনাল। তবুও নিজে যাচাই করে, স্টপ-লস সহ ঢুকুন।",
+  SELL: "বেশিরভাগ টাইমফ্রেম একমত: দুর্বল সিগনাল। নতুন কেনা এড়ান, কিনে রাখা থাকলে বিক্রির কথা ভাবুন।",
+  HOLD: "টাইমফ্রেমগুলোর মত মেলেনি বা সিগনাল দুর্বল। অপেক্ষা করাই নিরাপদ।"
+};
+function fmt(n) {
+  var d = n >= 1000 ? 2 : n >= 1 ? 3 : 5;
+  return n.toLocaleString("en-US", { minimumFractionDigits: d > 2 ? 2 : d, maximumFractionDigits: d });
+}
+function render(base, res, source, atr1h) {
+  var final = overall(res);
+  var cls = final.toLowerCase();
+  var main = res[1];
+
+  $("verdict").className = "verdict " + cls;
+  $("vpair").textContent = base + "/USDT";
+  $("vword").textContent = final;
+  $("vprice").textContent = "দাম: " + fmt(main.price) + " USDT";
+  $("vtext").textContent = TEXT[final];
+  $("result").hidden = false;
+
+  var lv = $("levels");
+  lv.innerHTML = "";
+  if (final === "BUY") {
+    var stop = main.price - 1.5 * atr1h;
+    var target = main.price + 3 * atr1h;
+    [["এন্ট্রি (বর্তমান দাম)", main.price], ["স্টপ-লস (১.৫ × ATR নিচে)", stop], ["টার্গেট (৩ × ATR উপরে)", target]].forEach(function (p) {
+      var dt = document.createElement("dt"); dt.textContent = p[0];
+      var dd = document.createElement("dd"); dd.textContent = fmt(p[1]);
+      lv.appendChild(dt); lv.appendChild(dd);
+    });
+    $("levelsCard").hidden = false;
+  } else {
+    $("levelsCard").hidden = true;
+  }
+
+  var list = $("tfList");
+  list.innerHTML = "";
+  res.forEach(function (x, idx) {
+    var d = document.createElement("details");
+    d.className = "tf";
+    var s = document.createElement("summary");
+    var left = document.createElement("span");
+    left.textContent = TF[idx].label + " ";
+    var sc = document.createElement("span");
+    sc.className = "score";
+    sc.textContent = "স্কোর " + x.score + "/4";
+    left.appendChild(sc);
+    var pill = document.createElement("span");
+    pill.className = "pill " + x.decision.toLowerCase();
+    pill.textContent = x.decision;
+    s.appendChild(left); s.appendChild(pill);
+    var ul = document.createElement("ul");
+    x.reasons.forEach(function (t) { var li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
+    d.appendChild(s); d.appendChild(ul);
+    list.appendChild(d);
+  });
+  $("tfCard").hidden = false;
+
+  $("meta").textContent = "ডেটা: " + source + " | শেষ বন্ধ ক্যান্ডেল: " + new Date(main.time).toLocaleString("bn-BD") + " (১ ঘণ্টা)";
+}
+
+function showError(msg) {
+  var e = $("error");
+  e.textContent = msg;
+  e.hidden = false;
+}
+
+function run() {
+  var base = $("pair").value;
+  var btn = $("go");
+  btn.disabled = true;
+  btn.textContent = "বিশ্লেষণ চলছে...";
+  $("error").hidden = true;
+  fetchAll(base).then(function (out) {
+    var res = out.data.map(analyze);
+    var a = atr(out.data[1].slice(0, out.data[1].length - 1), 14);
+    render(base, res, out.source, a);
+  }).catch(function (err) {
+    showError("ডেটা আনা যায়নি (" + (err && err.message ? err.message : "অজানা এরর") + "). ইন্টারনেট চেক করে আবার চেষ্টা করুন। সমস্যা থাকলে এই লেখাটা আমাকে পাঠান।");
+  }).finally(function () {
+    btn.disabled = false;
+    btn.textContent = "এখনই বিশ্লেষণ করুন";
+  });
+}
+
+$("go").addEventListener("click", run);
+$("pair").addEventListener("change", function () {
+  try { localStorage.setItem("pair", $("pair").value); } catch (e) {}
+  run();
+});
+$("auto").addEventListener("change", function () {
+  if (timer) { clearInterval(timer); timer = null; }
+  if ($("auto").checked) timer = setInterval(run, 300000);
+});
+try {
+  var saved = localStorage.getItem("pair");
+  if (saved) $("pair").value = saved;
+} catch (e) {}
+run();
+</script>
+</body>
+</html>
