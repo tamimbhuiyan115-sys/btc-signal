@@ -146,6 +146,7 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
     <div class="small" id="updated" style="text-align:right"></div>
   </div>
 
+  <div class="warn" id="srcWarn" hidden></div>
   <div id="error" class="error" hidden></div>
   <div id="banner" class="banner" hidden></div>
 
@@ -194,7 +195,11 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
       <label><input type="checkbox" id="live" checked> লাইভ আপডেট (পেজ খোলা থাকলে নিজে রিফ্রেশ)</label>
       <label><input type="checkbox" id="htfOn" checked> উচ্চ টাইমফ্রেম দিয়ে নিশ্চিত করা (ভুল সিগনাল কমায়)</label>
     </div>
-    <p></p>
+    <div class="fields" style="grid-template-columns:1fr; margin-top:12px">
+      <label>KuCoin প্রক্সি লিংক (ঐচ্ছিক, KuCoin-এর আসল দামের জন্য)
+        <input type="text" id="proxy" placeholder="https://kucoin-proxy.আপনার-নাম.workers.dev" inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false">
+      </label>
+    </div>
     <button class="go" id="go" type="button">এখনই বিশ্লেষণ করুন</button>
   </section>
 
@@ -238,8 +243,12 @@ function getJSON(url) {
     return r.json();
   }).finally(function () { clearTimeout(t); });
 }
+function kuBase() {
+  var p = ($("proxy").value || "").trim().replace(/\/+$/, "");
+  return /^https:\/\/[^\s]+$/.test(p) ? p : "https://api.kucoin.com";
+}
 function fetchKucoin(base, tf) {
-  return getJSON("https://api.kucoin.com/api/v1/market/candles?type=" + tf.ku + "&symbol=" + base + "-USDT").then(function (j) {
+  return getJSON(kuBase() + "/api/v1/market/candles?type=" + tf.ku + "&symbol=" + base + "-USDT").then(function (j) {
     if (j.code !== "200000" || !Array.isArray(j.data) || j.data.length < 60) throw new Error("KuCoin ডেটা নেই");
     return j.data.slice(0, 1000).reverse().map(function (r) {
       return { t: +r[0] * 1000, o: +r[1], c: +r[2], h: +r[3], l: +r[4], v: +r[5] };
@@ -252,10 +261,16 @@ function fetchBinance(base, tf) {
     return j.map(function (r) { return { t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }; });
   });
 }
+var kuErr = "", kuFailAt = 0;
 function fetchCandles(base, key) {
   var tf = TFS[key];
+  if (source === "binance" && Date.now() - kuFailAt > 300000) source = "kucoin";   // ৫ মিনিট পর আবার KuCoin চেষ্টা
   if (source === "kucoin") {
-    return fetchKucoin(base, tf).catch(function () { source = "binance"; return fetchBinance(base, tf); });
+    return fetchKucoin(base, tf).catch(function (e) {
+      source = "binance"; kuFailAt = Date.now();
+      kuErr = e && e.message ? e.message : "অজানা এরর";
+      return fetchBinance(base, tf);
+    });
   }
   return fetchBinance(base, tf);
 }
@@ -430,6 +445,11 @@ function render() {
   $("tfLabel").textContent = TFS[L.key].label;
   $("livePrice").textContent = fmt(S.live) + " USDT";
   $("updated").textContent = "আপডেট: " + new Date().toLocaleTimeString("en-GB");
+  var sw = $("srcWarn");
+  if (source !== "kucoin") {
+    sw.textContent = "⚠️ KuCoin থেকে ডেটা আসেনি (কারণ: " + kuErr + "). দেখানো দাম Binance-এর, তাই KuCoin-এর দামের সাথে সামান্য ফারাক থাকতে পারে। ট্রেডের আগে KuCoin অ্যাপে আসল দাম দেখে নিন।";
+    sw.hidden = false;
+  } else { sw.hidden = true; }
 
   var v = $("verdict");
   v.hidden = false; v.className = "verdict " + cls;
@@ -613,9 +633,11 @@ function drawChart() {
 }
 
 /* ================= মূল প্রবাহ ================= */
+var BAD_COIN = "কয়েনের নাম ঠিক নেই। শুধু কয়েনের নাম লিখুন, যেমন BTC বা ETH (USDT লিখবেন না, পেয়ার সবসময় /USDT)।";
 function getBase() {
-  var b = $("pair").value.trim().toUpperCase();
-  return /^[A-Z0-9]{2,10}$/.test(b) ? b : null;
+  var b = $("pair").value.trim().toUpperCase().replace(/[\s\/\-_]/g, "");
+  if (b.length > 4 && b.slice(-4) === "USDT") b = b.slice(0, -4);   // BTC/USDT, BTCUSDT লিখলেও চলবে
+  return /^[A-Z0-9]{2,10}$/.test(b) && b !== "USDT" ? b : null;
 }
 function showError(msg) { var e = $("error"); e.textContent = msg; e.hidden = !msg; }
 function schedule() {
@@ -625,7 +647,7 @@ function schedule() {
 function run(manual) {
   if (busy) { again = true; return; }
   var base = getBase();
-  if (!base) { showError("কয়েনের নাম ঠিক নেই। শুধু ইংরেজি অক্ষর/সংখ্যা দিন, যেমন BTC।"); return; }
+  if (!base) { showError(BAD_COIN); return; }
   busy = true; again = false;
   var key = curTf, tf = TFS[key], btn = $("go");
   if (manual) { btn.disabled = true; btn.textContent = "বিশ্লেষণ চলছে..."; }
@@ -666,15 +688,19 @@ function run(manual) {
     $("tfLabel").textContent = TFS[curTf].label;
   }
   var st = load("tf", "1h"); curTf = TFS[st] && TF_BUTTONS.indexOf(st) >= 0 ? st : "1h";
-  var sp = load("pair", "BTC"); if (/^[A-Z0-9]{2,10}$/.test(sp)) $("pair").value = sp;
+  var sp = load("pair", "BTC"); if (/^[A-Z0-9]{2,10}$/.test(sp) && sp !== "USDT") $("pair").value = sp;
   $("capital").value = load("capital", "100"); $("risk").value = load("risk", "1");
+  $("proxy").value = load("proxy", "");
   $("live").checked = load("live", "1") === "1"; $("htfOn").checked = load("htf", "1") === "1";
   markTf();
 
   $("go").addEventListener("click", function () { run(true); });
   $("pair").addEventListener("change", function () {
     var b = getBase(); if (b) { save("pair", b); $("pair").value = b; $("banner").hidden = true; run(true); }
-    else showError("কয়েনের নাম ঠিক নেই। শুধু ইংরেজি অক্ষর/সংখ্যা দিন, যেমন BTC।");
+    else showError(BAD_COIN);
+  });
+  $("proxy").addEventListener("change", function () {
+    save("proxy", $("proxy").value.trim()); source = "kucoin"; kuFailAt = 0; run(true);
   });
   $("capital").addEventListener("input", renderSize);
   $("risk").addEventListener("input", renderSize);
