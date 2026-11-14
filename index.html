@@ -22,6 +22,7 @@
   --sell-bg: #fbe6e4;
   --hold: #96680a;
   --hold-bg: #f8eed6;
+  --pred: #1f6feb;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -39,6 +40,7 @@
     --sell-bg: #3a1a18;
     --hold: #e0b04c;
     --hold-bg: #35290e;
+    --pred: #5aa2ff;
   }
 }
 * { box-sizing: border-box; }
@@ -96,7 +98,17 @@ input[type=text], input[type=number] {
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px 14px; }
 .card h2 { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; font-weight: 600; }
-canvas#chart { width: 100%; height: 270px; display: block; }
+canvas#chart { width: 100%; height: 340px; display: block; touch-action: pan-y; }
+.readout { font-size: 0.82rem; color: var(--muted); min-height: 2.6em; font-variant-numeric: tabular-nums; margin: 2px 0 6px; }
+.predbox { display: flex; align-items: center; gap: 14px; padding: 6px 0 8px; }
+.predbox .arrow { font-size: 2.6rem; line-height: 1; font-weight: 800; color: var(--pred); min-width: 1.4em; text-align: center; }
+.predbox .big { font-size: 1.08rem; font-weight: 700; color: var(--pred); }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.btnrow button { flex: 1 1 auto; padding: 12px 10px; border-radius: 12px; border: 0; font-weight: 700; cursor: pointer; color: var(--surface); }
+.btnrow button:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnrow .b { background: var(--buy); }
+.btnrow .s { background: var(--sell); }
+.btnrow .q { background: var(--surface); color: var(--fg); border: 1px solid var(--line); font-weight: 600; }
 
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
 .fields label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
@@ -147,7 +159,11 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
       <div class="small"><span class="dot" id="dot"></span><span id="pairLabel">BTC/USDT</span> · <span id="tfLabel"></span></div>
       <div class="livePrice" id="livePrice">–</div>
     </div>
-    <div class="small" id="updated" style="text-align:right"></div>
+    <div class="small" style="text-align:right; font-variant-numeric: tabular-nums">
+      <div id="updated"></div>
+      <div id="clock"></div>
+      <div id="cdown"></div>
+    </div>
   </div>
 
   <div class="warn" id="srcWarn" hidden></div>
@@ -165,8 +181,44 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
 
   <section class="card" id="chartCard" hidden>
     <h2>প্রাইস চার্ট</h2>
+    <div class="readout" id="readout"></div>
     <canvas id="chart"></canvas>
-    <div class="small">ক্যান্ডেল + EMA9 (গাঢ়), EMA21, Bollinger ব্যান্ড (ঝাপসা)। ডানের ছায়াঘেরা অংশ হলো আগামী কয়েক ক্যান্ডেলে দাম সাধারণত যে পরিসরে থাকে (ATR ভিত্তিক অনুমান), আর মাঝের ড্যাশ লাইনের ঢাল আসে ইতিহাসে এই সিগনালের গড় ফল থেকে। এটা ভবিষ্যদ্বাণী নয়।</div>
+    <div class="small">ক্যান্ডেল + EMA9 (গাঢ়), EMA21, Bollinger ব্যান্ড (ঝাপসা)। ডানের নীল ক্যান্ডেল হলো পরের ক্যান্ডেলের পূর্বাভাস (▲ উপরে, ▼ নিচে, সাথে সম্ভাবনা), আর "?" মানে পরিষ্কার ঝোঁক নেই। ধূসর ছায়াঘেরা অংশ হলো আগামী কয়েক ক্যান্ডেলে দাম সাধারণত যে পরিসরে থাকে (ATR ভিত্তিক অনুমান), আর মাঝের ড্যাশ লাইনের ঢাল আসে ইতিহাসে এই সিগনালের গড় ফল থেকে। এটা ভবিষ্যদ্বাণী নয়।</div>
+  </section>
+
+  <section class="card" id="npCard" hidden>
+    <h2>পরের ক্যান্ডেলের পূর্বাভাস (নীল ক্যান্ডেল)</h2>
+    <div class="predbox"><div class="arrow" id="npArrow">?</div><div><div class="big" id="npText"></div><div class="small" id="npSub"></div></div></div>
+    <dl class="kv" id="npKv"></dl>
+    <ul class="rs" id="npList" style="margin-top:8px"></ul>
+    <p class="small" id="npNote"></p>
+  </section>
+
+  <section class="card" id="ppCard" hidden>
+    <h2>ডেমো ট্রেড (নকল টাকা, আসল দামে)</h2>
+    <dl class="kv" id="ppKv"></dl>
+    <div class="fields" style="grid-template-columns:1fr; margin-top:10px">
+      <label>কত USDT দিয়ে কিনবেন<input type="number" id="ppAmt" inputmode="decimal" min="1" step="any" value="100"></label>
+    </div>
+    <div class="btnrow">
+      <button type="button" class="q" data-pct="25">২৫%</button>
+      <button type="button" class="q" data-pct="50">৫০%</button>
+      <button type="button" class="q" data-pct="100">১০০%</button>
+      <button type="button" class="q" id="ppSug">পরামর্শ অনুযায়ী</button>
+    </div>
+    <div class="btnrow">
+      <button type="button" class="b" id="ppBuy">ডেমো কিনুন</button>
+      <button type="button" class="s" id="ppSell2">অর্ধেক বিক্রি</button>
+      <button type="button" class="s" id="ppSell">সব বিক্রি</button>
+    </div>
+    <div class="warn" id="ppMsg" hidden></div>
+    <ul class="rs" id="ppPos" style="margin-top:10px"></ul>
+    <ul class="rs" id="ppLog" style="margin-top:6px"></ul>
+    <p class="small" id="ppNote"></p>
+    <div class="fields" style="grid-template-columns:1fr; margin-top:6px">
+      <label>রিসেটের পর শুরুর ডেমো টাকা (USDT)<input type="number" id="ppStart" inputmode="decimal" min="10" step="any" value="1000"></label>
+    </div>
+    <button class="go ghost" id="ppReset" type="button">ডেমো অ্যাকাউন্ট রিসেট</button>
   </section>
 
   <section class="card" id="sizeCard" hidden>
@@ -218,7 +270,7 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
   </section>
 
   <p class="small" id="meta"></p>
-  <p class="small">⚠️ এটা আর্থিক পরামর্শ নয়। কোনো ইন্ডিকেটর বা বট লাভের নিশ্চয়তা দিতে পারে না, ৯৯% সঠিকতা কারও পক্ষেই সম্ভব নয়। শুধু সেই টাকা ব্যবহার করুন যা হারালে সমস্যা নেই, আর সবসময় স্টপ-লস রাখুন।</p>
+  <p class="small">⚠️ এটা আর্থিক পরামর্শ নয়। কোনো ইন্ডিকেটর বা বট লাভের নিশ্চয়তা দিতে পারে না, ৯৯% সঠিকতা কারও পক্ষেই সম্ভব নয়। ডেমো ট্রেডে ভালো ফল এলেও আসল ট্রেডে ফল খারাপ হতে পারে। শুধু সেই টাকা ব্যবহার করুন যা হারালে সমস্যা নেই, আর সবসময় স্টপ-লস রাখুন।</p>
 </div>
 
 <script>
@@ -330,8 +382,8 @@ function rsiCalc(c, n) {
   return out;
 }
 function compute(cd) {
-  var n = cd.length, P = { n: n, c: [], h: [], l: [], v: [], t: [] }, i, k;
-  for (i = 0; i < n; i++) { P.c.push(cd[i].c); P.h.push(cd[i].h); P.l.push(cd[i].l); P.v.push(cd[i].v); P.t.push(cd[i].t); }
+  var n = cd.length, P = { n: n, o: [], c: [], h: [], l: [], v: [], t: [] }, i, k;
+  for (i = 0; i < n; i++) { P.o.push(cd[i].o); P.c.push(cd[i].c); P.h.push(cd[i].h); P.l.push(cd[i].l); P.v.push(cd[i].v); P.t.push(cd[i].t); }
   P.e9 = ema(P.c, 9); P.e21 = ema(P.c, 21); P.e50 = ema(P.c, 50); P.e200 = ema(P.c, 200);
   P.rsi = rsiCalc(P.c, 14);
   var e12 = ema(P.c, 12), e26 = ema(P.c, 26);
@@ -434,11 +486,13 @@ function finalDecision(S, H) {
 
 /* ================= ব্যাকটেস্ট (সিগনাল আগে কতটা ঠিক ছিল) ================= */
 function backtest(P, H) {
-  var R = { buy: { n: 0, win: 0, sum: 0 }, sell: { n: 0, win: 0, sum: 0 }, base: { n: 0, up: 0 }, span: 0 };
+  var R = { buy: { n: 0, win: 0, sum: 0 }, sell: { n: 0, win: 0, sum: 0 }, base: { n: 0, up: 0 }, span: 0,
+    nb: [{ n: 0, u: 0 }, { n: 0, u: 0 }, { n: 0, u: 0 }, { n: 0, u: 0 }, { n: 0, u: 0 }] };
   for (var i = 200; i + H <= P.n - 2; i++) {
     var ret = P.c[i + H] / P.c[i] - 1;
     R.base.n++; if (ret > FEE) R.base.up++;
-    var dec = signalAt(P, i).decision;
+    var sg = signalAt(P, i), dec = sg.decision;
+    var nbk = R.nb[bucketOf(sg.score)]; nbk.n++; if (P.c[i + 1] > P.o[i + 1]) nbk.u++;   // পরের ক্যান্ডেল উপরে বন্ধ হয়েছিল কিনা
     if (dec === "BUY") { R.buy.n++; R.buy.sum += ret; if (ret > FEE) R.buy.win++; }
     else if (dec === "SELL") { R.sell.n++; R.sell.sum += ret; if (ret < 0) R.sell.win++; }
   }
@@ -510,6 +564,9 @@ function render() {
   renderSize();
   renderAcc();
   renderTracker();
+  renderNext();
+  renderPaper();
+  tickClock();
 
   $("indCard").hidden = false;
   var ul = $("reasons"); ul.innerHTML = "";
@@ -551,6 +608,7 @@ function renderSize() {
   var qty = capital * risk / 100 / stopDist, capped = false;
   if (qty * price > capital) { qty = capital / price; capped = true; }
   var cost = qty * price;
+  last.sizeCost = cost;
   var lossAtStop = qty * stopDist, gainAtTgt = qty * tgtDist;
   var rows = [
     ["কিনবেন (" + splitSym(last.base).quote + ")", fmt(cost)],
@@ -592,9 +650,57 @@ function renderAcc() {
 }
 
 /* ================= চার্ট ================= */
+var hoverIdx = -1, chartGeo = null;
+function two(n) { return (n < 10 ? "0" : "") + n; }
+function fmtT(t, key) {
+  var d = new Date(t), hm = two(d.getHours()) + ":" + two(d.getMinutes()), dm = two(d.getDate()) + "/" + two(d.getMonth() + 1);
+  if (key === "1d" || key === "1w") return dm;
+  if (key === "4h") return dm + " " + hm;
+  return (key === "1h" && d.getHours() === 0) ? dm : hm;
+}
+function fmtFull(t) {
+  var d = new Date(t);
+  return two(d.getDate()) + "/" + two(d.getMonth() + 1) + " " + two(d.getHours()) + ":" + two(d.getMinutes());
+}
+function fmtDur(s) {
+  var d = Math.floor(s / 86400); s -= d * 86400;
+  var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return (d ? d + " দিন " : "") + two(h) + ":" + two(m) + ":" + two(x);
+}
+function niceTicks(lo, hi, cnt) {
+  var span = hi - lo;
+  if (!(span > 0)) return [lo];
+  var raw = span / cnt, mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10)), f = raw / mag;
+  var step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, out = [];
+  for (var v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(v);
+  return out;
+}
+function tickClock() {
+  var d = new Date();
+  $("clock").textContent = "এখন: " + two(d.getHours()) + ":" + two(d.getMinutes()) + ":" + two(d.getSeconds());
+  if (last) {
+    var end = last.P.t[last.P.n - 1] + TFMS[last.key], rem = Math.round((end - Date.now()) / 1000);
+    $("cdown").textContent = rem > 0 ? "ক্যান্ডেল বন্ধ হতে: " + fmtDur(rem) : "নতুন ক্যান্ডেল আসছে...";
+  }
+}
+function setReadout() {
+  var box = $("readout"), P = last && last.P;
+  if (!P || hoverIdx < 0) { box.textContent = "চার্টে আঙুল রাখুন বা চাপুন: সেই ক্যান্ডেলের সময় ও দাম দেখাবে। নীল ক্যান্ডেলে চাপলে পূর্বাভাস দেখাবে।"; return; }
+  var k = Math.min(hoverIdx, P.n);
+  if (k >= P.n) {
+    var NP = last.NP;
+    box.textContent = "পরের ক্যান্ডেল (শুরু " + fmtFull(P.t[P.n - 1] + TFMS[last.key]) + "): " +
+      (NP.call ? (NP.dir === "up" ? "▲ উপরে " : "▼ নিচে ") + pct(NP.conf, 0) + " সম্ভাবনা" : "পরিষ্কার ঝোঁক নেই");
+    return;
+  }
+  var c = last.cd[k], ch = c.o ? (c.c / c.o - 1) : 0;
+  box.textContent = fmtFull(P.t[k]) + " | খুলেছে " + fmt(c.o) + " | সর্বোচ্চ " + fmt(c.h) + " | সর্বনিম্ন " + fmt(c.l) +
+    " | বন্ধ " + fmt(c.c) + " (" + (ch >= 0 ? "+" : "") + pct(ch, 2) + ")";
+}
+
 function drawChart() {
   if (!last) return;
-  var P = last.P, cv = $("chart");
+  var P = last.P, S = last.S, NP = last.NP, cv = $("chart");
   var css = getComputedStyle(document.documentElement);
   var col = function (n) { return css.getPropertyValue(n).trim(); };
   var dpr = window.devicePixelRatio || 1;
@@ -605,36 +711,53 @@ function drawChart() {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, w, h);
 
-  var N = Math.min(90, P.n), s = P.n - N, padR = 64, padT = 10, padB = 10;
+  var key = last.key, tfms = TFMS[key];
+  var N = Math.min(70, P.n), s = P.n - N, padR = 64, padT = 12, padB = 24;
   var showLv = last.fin.f === "BUY";
-  var S = last.S, stop = S.live - 1.5 * S.atr, tgt = S.live + 3 * S.atr;
+  var stop = S.live - 1.5 * S.atr, tgt = S.live + 3 * S.atr;
   var FC = forecast(last), F = FC.F;
-  var lo = Infinity, hi = -Infinity, i;
+  var lo = Infinity, hi = -Infinity, i, k;
   for (i = s; i < P.n; i++) {
     lo = Math.min(lo, P.l[i]); hi = Math.max(hi, P.h[i]);
     if (!isNaN(P.bbl[i])) { lo = Math.min(lo, P.bbl[i]); hi = Math.max(hi, P.bbu[i]); }
   }
   if (showLv) { lo = Math.min(lo, stop); hi = Math.max(hi, tgt); }
-  lo = Math.min(lo, FC.dn[F]); hi = Math.max(hi, FC.up[F]);
+  lo = Math.min(lo, FC.dn[F], S.live - 0.9 * S.atr);
+  hi = Math.max(hi, FC.up[F], S.live + 0.9 * S.atr);
   var padv = (hi - lo) * 0.04; lo -= padv; hi += padv;
   var Y = function (v) { return padT + (hi - v) / (hi - lo) * (h - padT - padB); };
-  var cw = (w - padR) / (N + F), X = function (k) { return (k - s) * cw + cw / 2; };
+  var cw = (w - padR) / (N + F), X = function (kk) { return (kk - s) * cw + cw / 2; };
+  chartGeo = { s: s, cw: cw, F: F };
+  var gx = X(P.n), blue = col("--pred");
 
   g.font = "11px -apple-system, system-ui, sans-serif";
-  g.textBaseline = "middle";
-  g.strokeStyle = col("--line"); g.fillStyle = col("--muted"); g.lineWidth = 1;
-  for (var t = 0; t <= 4; t++) {
-    var val = lo + (hi - lo) * t / 4, yy = Y(val);
-    g.beginPath(); g.moveTo(0, yy); g.lineTo(w - padR, yy); g.stroke();
-    g.fillText(fmt(val), w - padR + 6, yy);
+  g.lineWidth = 1;
+
+  // দামের স্কেল (ডানে) ও আড়াআড়ি রেখা
+  g.textAlign = "left"; g.textBaseline = "middle";
+  niceTicks(lo, hi, 5).forEach(function (v) {
+    var yy = Y(v);
+    g.strokeStyle = col("--line"); g.beginPath(); g.moveTo(0, yy); g.lineTo(w - padR, yy); g.stroke();
+    g.fillStyle = col("--muted"); g.fillText(fmt(v), w - padR + 6, yy);
+  });
+  // সময়ের স্কেল (নিচে) ও খাড়া রেখা
+  g.textAlign = "center"; g.textBaseline = "top";
+  var stepK = Math.max(1, Math.ceil(N / 5));
+  for (k = P.n - 1; k >= s; k -= stepK) {
+    var xx = X(k);
+    if (xx > gx - 42) continue;
+    if (xx < 22) break;
+    g.strokeStyle = col("--line"); g.beginPath(); g.moveTo(xx, padT); g.lineTo(xx, h - padB); g.stroke();
+    g.fillStyle = col("--muted"); g.fillText(fmtT(P.t[k], key), xx, h - padB + 7);
   }
+  g.fillStyle = blue; g.fillText(fmtT(P.t[P.n - 1] + tfms, key), Math.min(gx, w - padR - 16), h - padB + 7);
 
   function line(arr, color, width, dash) {
     g.beginPath(); g.strokeStyle = color; g.lineWidth = width; g.setLineDash(dash || []);
     var started = false;
-    for (var k = s; k < P.n; k++) {
-      if (isNaN(arr[k])) continue;
-      if (!started) { g.moveTo(X(k), Y(arr[k])); started = true; } else g.lineTo(X(k), Y(arr[k]));
+    for (var kk = s; kk < P.n; kk++) {
+      if (isNaN(arr[kk])) continue;
+      if (!started) { g.moveTo(X(kk), Y(arr[kk])); started = true; } else g.lineTo(X(kk), Y(arr[kk]));
     }
     g.stroke(); g.setLineDash([]);
   }
@@ -647,15 +770,14 @@ function drawChart() {
   g.beginPath(); g.moveTo(x0, Y(FC.mid[0]));
   for (k2 = 1; k2 <= F; k2++) g.lineTo(X(P.n - 1 + k2), Y(FC.up[k2]));
   for (k2 = F; k2 >= 0; k2--) g.lineTo(X(P.n - 1 + k2), Y(FC.dn[k2]));
-  g.closePath(); g.globalAlpha = 0.14; g.fillStyle = col("--accent"); g.fill(); g.globalAlpha = 1;
-  g.beginPath(); g.strokeStyle = col("--accent"); g.lineWidth = 1.5; g.setLineDash([5, 4]);
+  g.closePath(); g.globalAlpha = 0.12; g.fillStyle = col("--muted"); g.fill(); g.globalAlpha = 1;
+  g.beginPath(); g.strokeStyle = col("--muted"); g.lineWidth = 1.2; g.setLineDash([5, 4]);
   g.moveTo(x0, Y(FC.mid[0]));
   for (k2 = 1; k2 <= F; k2++) g.lineTo(X(P.n - 1 + k2), Y(FC.mid[k2]));
   g.stroke(); g.setLineDash([]);
 
   var bw = Math.max(1.5, cw * 0.62);
   for (i = s; i < P.n; i++) {
-    var up = P.c[i] >= (i > 0 ? P.c[i - 1] : P.c[i]);
     var cd = last.cd[i];
     var colr = cd.c >= cd.o ? col("--buy") : col("--sell");
     g.strokeStyle = colr; g.fillStyle = colr; g.lineWidth = 1;
@@ -666,10 +788,31 @@ function drawChart() {
   line(P.e21, col("--hold"), 1.5);
   line(P.e9, col("--accent"), 1.8);
 
+  // নীল ভবিষ্যৎ ক্যান্ডেল
+  function tag(text, xr, yc) {
+    g.textAlign = "right"; g.textBaseline = "middle";
+    var tw = g.measureText(text).width + 10;
+    g.globalAlpha = 0.92; g.fillStyle = col("--surface"); g.fillRect(xr - tw + 2, yc - 9, tw, 18); g.globalAlpha = 1;
+    g.fillStyle = blue; g.fillText(text, xr - 3, yc);
+  }
+  var op = S.live, sz = 0.5 * S.atr, gw = Math.max(6, cw * 1.2);
+  if (NP.call) {
+    var cl = NP.dir === "up" ? op + sz : op - sz, top = Math.max(op, cl), bot = Math.min(op, cl);
+    g.strokeStyle = blue; g.fillStyle = blue; g.lineWidth = 1.5; g.setLineDash([]);
+    g.beginPath(); g.moveTo(gx, Y(top + 0.35 * S.atr)); g.lineTo(gx, Y(bot - 0.35 * S.atr)); g.stroke();
+    g.globalAlpha = 0.9; g.fillRect(gx - gw / 2, Y(top), gw, Math.max(2, Y(bot) - Y(top))); g.globalAlpha = 1;
+    tag((NP.dir === "up" ? "▲ " : "▼ ") + Math.round(NP.conf * 100) + "%", gx - gw / 2 - 6, Y((top + bot) / 2));
+  } else {
+    g.strokeStyle = blue; g.lineWidth = 1.5; g.setLineDash([3, 3]);
+    g.strokeRect(gx - gw / 2, Y(op + sz), gw, Math.max(2, Y(op - sz) - Y(op + sz))); g.setLineDash([]);
+    tag("?", gx - gw / 2 - 6, Y(op));
+  }
+
   function hline(v, color, label, dash) {
     var yy = Y(v);
     g.beginPath(); g.strokeStyle = color; g.lineWidth = 1.2; g.setLineDash(dash);
     g.moveTo(0, yy); g.lineTo(w - padR, yy); g.stroke(); g.setLineDash([]);
+    g.textAlign = "left"; g.textBaseline = "middle";
     g.fillStyle = color;
     var tw = g.measureText(label).width + 10;
     g.fillRect(w - padR + 2, yy - 9, tw, 18);
@@ -677,6 +820,16 @@ function drawChart() {
   }
   if (showLv) { hline(stop, col("--sell"), "SL", [5, 4]); hline(tgt, col("--buy"), "TP", [5, 4]); }
   hline(S.live, col("--fg"), fmt(S.live), [2, 3]);
+
+  // আঙুল/মাউস রাখা জায়গার ক্রসহেয়ার
+  if (hoverIdx >= 0) {
+    var hk = Math.min(hoverIdx, P.n), hx = X(hk);
+    g.strokeStyle = col("--muted"); g.lineWidth = 1; g.setLineDash([2, 3]);
+    g.beginPath(); g.moveTo(hx, padT); g.lineTo(hx, h - padB); g.stroke();
+    if (hk < P.n) { var hy = Y(P.c[hk]); g.beginPath(); g.moveTo(0, hy); g.lineTo(w - padR, hy); g.stroke(); }
+    g.setLineDash([]);
+  }
+  setReadout();
 }
 
 /* ================= মান-ফিল্টার (ইতিহাসে যাচাই করা) ================= */
@@ -789,6 +942,171 @@ function renderTracker() {
     "যখনই BUY বা SELL সিগনাল আসে, তখনকার আসল দাম, স্টপ-লস ও টার্গেট এখানে রেকর্ড হয়। তারপর আসল দামের চলনে টার্গেট না স্টপ-লস আগে ছোঁয়া হলো তা হিসাব হয় (৪৮ ক্যান্ডেলে কোনোটাই না ছুঁলে বন্ধ ধরা হয়)। এটা সিমুলেশন নয়, কিন্তু আসল টাকাও লাগে না। SELL ধরা হয় দাম কমার সিগনাল হিসেবে (স্পটে শর্ট করা যায় না)। ফলাফল শুধু এই ফোনের ব্রাউজারে জমা থাকে। পেজ বন্ধ থাকলে কোনো যাচাই হয় না, পরের বার ওই পেয়ার ও টাইমফ্রেম খুললে ক্যান্ডেল ইতিহাস থেকে হিসাব মেটে।";
 }
 
+/* ================= পরের ক্যান্ডেলের পূর্বাভাস ও লাইভ যাচাই ================= */
+var TFMS = { "1m": 60000, "5m": 300000, "15m": 900000, "1h": 3600000, "4h": 14400000, "1d": 86400000, "1w": 604800000 };
+function bucketOf(s) { return s <= -5 ? 0 : s <= -2 ? 1 : s <= 1 ? 2 : s <= 4 ? 3 : 4; }
+// ইতিহাসে একই স্কোর-গোষ্ঠীতে পরের ক্যান্ডেল কতবার উপরে বন্ধ হয়েছে, সেই হার থেকে পূর্বাভাস
+function predictNext(P, BT) {
+  var sc = signalAt(P, P.n - 1).score, st = BT.nb[bucketOf(sc)];
+  var p = (st.u + 1) / (st.n + 2), up = p >= 0.5, conf = up ? p : 1 - p;
+  return { score: sc, n: st.n, pUp: p, dir: up ? "up" : "down", conf: conf, call: st.n >= 30 && conf >= 0.53 };
+}
+var NP_KEY = "npred";
+function readNP() {
+  try { var a = JSON.parse(load(NP_KEY, "[]")); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function writeNP(a) { save(NP_KEY, JSON.stringify(a.slice(-500))); }
+function trackNext(L) {
+  var arr = readNP(), changed = false, now = Date.now(), tfms = TFMS[L.key], cd = L.cd, n = cd.length, i;
+
+  // ১) যে ক্যান্ডেল বন্ধ হয়ে গেছে, তার আসল ফলের সাথে মিলিয়ে সঠিক/ভুল গোনা
+  arr.forEach(function (r) {
+    if (r.status !== "pending" || r.sym !== L.base || r.tf !== L.key) return;
+    if (now < r.target + tfms) return;
+    var c = null, j;
+    for (j = n - 1; j >= 0; j--) {
+      if (cd[j].t === r.target) { c = cd[j]; break; }
+      if (cd[j].t < r.target) break;
+    }
+    if (!c) { if (now > r.target + 3 * tfms) { r.status = "expired"; changed = true; } return; }
+    if (j === n - 1 && now < r.target + tfms + 20000) return;       // নতুন ক্যান্ডেল না আসা পর্যন্ত অপেক্ষা
+    r.o = c.o; r.c = c.c;
+    r.status = c.c === c.o ? "flat" : ((c.c > c.o) === (r.dir === "up") ? "hit" : "miss");
+    changed = true;
+  });
+
+  // ২) পরের ক্যান্ডেলের জন্য কল রেকর্ড (ক্যান্ডেল শুরুর আগ পর্যন্ত বদলানো যায়, শুরু হলে স্থির)
+  var target = L.P.t[L.P.n - 1] + tfms, k = L.base + "|" + L.key + "|" + target, idx = -1;
+  for (i = 0; i < arr.length; i++) if (arr[i].k === k) idx = i;
+  if (now < target) {
+    if (L.NP.call) {
+      if (idx >= 0) {
+        if (arr[idx].status === "pending") { arr[idx].dir = L.NP.dir; arr[idx].p = L.NP.conf; arr[idx].made = now; changed = true; }
+      } else {
+        arr.push({ k: k, sym: L.base, tf: L.key, target: target, dir: L.NP.dir, p: L.NP.conf, made: now, status: "pending" });
+        changed = true;
+      }
+    } else if (idx >= 0 && arr[idx].status === "pending") { arr.splice(idx, 1); changed = true; }
+  }
+  if (changed) writeNP(arr);
+}
+function renderNext() {
+  var L = last, NP = L.NP, tfms = TFMS[L.key], target = L.P.t[L.P.n - 1] + tfms;
+  $("npCard").hidden = false;
+  $("npArrow").textContent = NP.call ? (NP.dir === "up" ? "▲" : "▼") : "?";
+  $("npText").textContent = NP.call
+    ? "পরের ক্যান্ডেল " + (NP.dir === "up" ? "উপরে (সবুজ)" : "নিচে (লাল)") + " বন্ধ হওয়ার ঝোঁক, " + pct(NP.conf, 0)
+    : "পরিষ্কার ঝোঁক নেই, তাই কোনো কল দেওয়া হচ্ছে না";
+  $("npSub").textContent = "ইতিহাসে এমন অবস্থা " + NP.n + " বার এসেছিল, তার " + pct(NP.pUp, 0) + " বার পরের ক্যান্ডেল উপরে বন্ধ হয়েছে।";
+
+  var arr = readNP();
+  function stat(list) {
+    var g = list.filter(function (r) { return r.status === "hit" || r.status === "miss"; });
+    var h = g.filter(function (r) { return r.status === "hit"; }).length;
+    return g.length ? h + "/" + g.length + " সঠিক (" + pct(h / g.length, 0) + ")" : "এখনো কোনো ক্যান্ডেল বন্ধ হয়নি";
+  }
+  var cur = arr.filter(function (r) { return r.sym === L.base && r.tf === L.key; });
+  var strong = arr.filter(function (r) { return r.p >= 0.58; });
+  var pending = arr.filter(function (r) { return r.status === "pending"; }).length;
+  kv($("npKv"), [
+    ["পরের ক্যান্ডেল শুরু", fmtFull(target)],
+    ["লাইভ যাচাই: সব কল", stat(arr)],
+    ["এই পেয়ার ও টাইমফ্রেমে", stat(cur)],
+    ["জোরালো কল (৫৮% বা বেশি)", stat(strong)],
+    ["যাচাইয়ের অপেক্ষায়", String(pending)]
+  ]);
+  var ul = $("npList"); ul.innerHTML = "";
+  arr.slice(-8).reverse().forEach(function (r) {
+    var li = el("li"), sp = splitSym(r.sym);
+    var left = el("span", "grow", (r.dir === "up" ? "▲ " : "▼ ") + sp.coin + "/" + sp.quote + " " + r.tf + " · " + fmtFull(r.target) + " · " + Math.round(r.p * 100) + "%" +
+      (r.c ? " · আসলে " + (r.c > r.o ? "উপরে" : r.c < r.o ? "নিচে" : "সমান") + " (" + (r.c >= r.o ? "+" : "") + pct(r.c / r.o - 1, 2) + ")" : ""));
+    var cls = r.status === "hit" ? "win" : r.status === "miss" ? "loss" : "open";
+    var txt = r.status === "hit" ? "সঠিক ✓" : r.status === "miss" ? "ভুল ✗" : r.status === "pending" ? "অপেক্ষায়" : r.status === "flat" ? "সমান" : "বাতিল";
+    li.appendChild(left); li.appendChild(el("span", "st " + cls, txt)); ul.appendChild(li);
+  });
+  if (!arr.length) ul.appendChild(el("li", "", "এখনো কোনো কল রেকর্ড হয়নি। পেজ খোলা রাখলে নিজে রেকর্ড ও যাচাই হবে।"));
+  $("npNote").textContent =
+    "পেজ প্রতিবার পরের ক্যান্ডেলের জন্য কল রেকর্ড করে, ক্যান্ডেল শুরু হলে সেটা আর বদলায় না। ক্যান্ডেল বন্ধ হলে আসল ফলের সাথে মিলিয়ে নিজে সঠিক বা ভুল গোনে। পূর্বাভাস শুধু তখনই দেয় যখন ইতিহাসে অন্তত ৩০ বার একই অবস্থা এসেছে আর একদিকে ৫৩% বা বেশি ঝোঁক ছিল। " +
+    "মনে রাখবেন, পরের একটা ক্যান্ডেলের দিক আন্দাজ করা খুবই কঠিন। পেশাদার সিস্টেমেও ৫৫–৬০% এর বেশি পাওয়া যায় না, আর ১০০টার কম কলের ফলে ভরসা করা যায় না। ৯৯% সম্ভব নয়, এই সংখ্যাটাই আসল মাপকাঠি। যাচাই শুধু পেজ খোলা থাকা অবস্থায় হয়।";
+}
+
+/* ================= ডেমো ট্রেড (নকল টাকা, আসল দামে) ================= */
+var PP_KEY = "paper", PP_FEE = 0.001;
+function readPP() {
+  try { var o = JSON.parse(load(PP_KEY, "")); if (o && typeof o.cash === "number" && o.pos && Array.isArray(o.log)) return o; } catch (e) {}
+  return { cash: 1000, start: 1000, pos: {}, log: [] };
+}
+function writePP(o) { o.log = o.log.slice(-60); save(PP_KEY, JSON.stringify(o)); }
+function ppEquity(pp) {
+  var e = pp.cash;
+  Object.keys(pp.pos).forEach(function (c) { e += pp.pos[c].qty * pp.pos[c].last * (1 - PP_FEE); });
+  return e;
+}
+function ppUpdatePrice(L) {
+  var sp = splitSym(L.base);
+  if (sp.quote !== "USDT") return;
+  var pp = readPP(), p = pp.pos[sp.coin];
+  if (p && p.last !== L.S.live) { p.last = L.S.live; writePP(pp); }
+}
+function ppMsg(t, ok) {
+  var m = $("ppMsg"); m.textContent = t; m.hidden = !t; m.style.color = ok ? "var(--buy)" : "var(--hold)";
+}
+// সফল হলে "" ফেরত দেয়, নইলে কারণ
+function ppTrade(side, frac) {
+  if (!last) return "আগে বিশ্লেষণ চলতে দিন।";
+  var sp = splitSym(last.base);
+  if (sp.quote !== "USDT") return "ডেমো ট্রেড শুধু USDT পেয়ারে চলে।";
+  var px = last.S.live, pp = readPP(), now = Date.now();
+  if (side === "BUY") {
+    var amt = parseFloat($("ppAmt").value);
+    if (!(amt > 0)) return "কত USDT দিয়ে কিনবেন তা লিখুন।";
+    if (amt > pp.cash + 1e-9) return "ডেমো ক্যাশ যথেষ্ট নয় (আছে " + fmt(pp.cash) + " USDT)।";
+    var qty = amt * (1 - PP_FEE) / px, pos = pp.pos[sp.coin] || { qty: 0, cost: 0, last: px };
+    pos.qty += qty; pos.cost += amt; pos.last = px; pp.pos[sp.coin] = pos; pp.cash -= amt;
+    pp.log.push({ t: now, side: "BUY", coin: sp.coin, qty: qty, px: px });
+  } else {
+    var p0 = pp.pos[sp.coin];
+    if (!p0 || p0.qty <= 0) return "এই কয়েন আপনার ডেমো অ্যাকাউন্টে নেই।";
+    var q = p0.qty * frac, proceeds = q * px * (1 - PP_FEE), costPart = p0.cost * frac, pnl = proceeds - costPart;
+    p0.qty -= q; p0.cost -= costPart; p0.last = px; pp.cash += proceeds;
+    if (frac >= 0.999999 || p0.qty < 1e-12) delete pp.pos[sp.coin];
+    pp.log.push({ t: now, side: "SELL", coin: sp.coin, qty: q, px: px, pnl: pnl });
+  }
+  writePP(pp);
+  return "";
+}
+function renderPaper() {
+  var L = last, sp = splitSym(L.base), pp = readPP(), usdt = sp.quote === "USDT";
+  $("ppCard").hidden = false;
+  var eq = ppEquity(pp), pl = eq - pp.start;
+  kv($("ppKv"), [
+    ["ডেমো ক্যাশ", fmt(pp.cash) + " USDT"],
+    ["মোট মূল্য (ক্যাশ + কয়েন)", fmt(eq) + " USDT"],
+    ["শুরুতে ছিল", fmt(pp.start) + " USDT"],
+    ["মোট লাভ/লস", (pl >= 0 ? "+" : "") + fmt(pl) + " USDT (" + (pl >= 0 ? "+" : "") + pct(pl / pp.start, 2) + ")"]
+  ]);
+  ["ppBuy", "ppSell", "ppSell2"].forEach(function (id) { $(id).disabled = !usdt; });
+  var ul = $("ppPos"); ul.innerHTML = "";
+  Object.keys(pp.pos).forEach(function (c) {
+    var p = pp.pos[c], val = p.qty * p.last * (1 - PP_FEE), pnl = val - p.cost;
+    var li = el("li");
+    li.appendChild(el("span", "grow", "হাতে আছে: " + c + " " + p.qty.toFixed(p.last >= 100 ? 6 : 4) + " · গড় কেনা " + fmt(p.cost / p.qty) + " · এখন " + fmt(p.last)));
+    li.appendChild(el("span", "st " + (pnl >= 0 ? "win" : "loss"), (pnl >= 0 ? "+" : "") + pct(pnl / p.cost, 2)));
+    ul.appendChild(li);
+  });
+  if (!Object.keys(pp.pos).length) ul.appendChild(el("li", "", "এখন কোনো কয়েন হাতে নেই।"));
+  var lg = $("ppLog"); lg.innerHTML = "";
+  pp.log.slice(-8).reverse().forEach(function (x) {
+    var li = el("li");
+    li.appendChild(el("span", "grow", (x.side === "BUY" ? "কেনা " : "বেচা ") + x.coin + " " + x.qty.toFixed(x.px >= 100 ? 6 : 4) + " @ " + fmt(x.px) + " · " + fmtFull(x.t)));
+    if (x.side === "SELL") li.appendChild(el("span", "st " + (x.pnl >= 0 ? "win" : "loss"), (x.pnl >= 0 ? "+" : "") + fmt(x.pnl) + " USDT"));
+    lg.appendChild(li);
+  });
+  $("ppNote").textContent = usdt
+    ? "এটা নকল টাকা, আসল টাকা নয়। ট্রেড হয় এই মুহূর্তের আসল লাইভ দামে (ফি ০.১%, স্লিপেজ ধরা হয়নি, তাই আসল ট্রেডে ফল একটু খারাপ হতে পারে)। সিগনাল ঠিক কিনা বুঝতে সিগনাল অনুযায়ী কিনুন ও বেচুন, তারপর মোট লাভ/লস দেখুন। যে কয়েন খোলা আছে শুধু তার দাম আপডেট হয়। ফলাফল শুধু এই ফোনের ব্রাউজারে জমা থাকে।"
+    : "ডেমো ট্রেড এখন শুধু USDT পেয়ারে চলে। BTC, ETH, SOL ইত্যাদি কয়েন লিখে ব্যবহার করুন।";
+}
+
 /* ================= মূল প্রবাহ ================= */
 var BAD_COIN = "পেয়ারের নাম ঠিক নেই। শুধু কয়েন লিখুন (BTC, ETH), অথবা পুরো পেয়ার (ETH/BTC, SOL-USDC)। শুধু USDT লিখলে চলবে না।";
 function splitSym(sym) { var p = sym.split("-"); return { coin: p[0], quote: p[1] || "USDT" }; }
@@ -827,9 +1145,11 @@ function run(manual) {
     var H = res[1] ? analyzeLatest(compute(res[1])) : null;
     var BT = backtest(P, tf.h);
     var fin = applyGate(finalDecision(S, H), BT, $("strict").checked);
-    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT };
+    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT, NP: predictNext(P, BT) };
     $("dot").className = "dot on";
     track(last);
+    trackNext(last);
+    ppUpdatePrice(last);
     render();
   }).catch(function (err) {
     showError("ডেটা আনা যায়নি (" + (err && err.message ? err.message : "অজানা এরর") + "). কয়েনের নাম বা ইন্টারনেট দেখে আবার চেষ্টা করুন। সমস্যা থাকলে এই লেখাটা আমাকে পাঠান।");
@@ -889,6 +1209,52 @@ function run(manual) {
       writeSigs([]); renderTracker();
     }
   });
+  // চার্টে আঙুল বা মাউস রাখলে ক্যান্ডেলের সময় ও দাম
+  var cv = $("chart");
+  function onPtr(e) {
+    if (!last || !chartGeo) return;
+    var r = cv.getBoundingClientRect(), k = Math.round((e.clientX - r.left) / chartGeo.cw - 0.5) + chartGeo.s;
+    hoverIdx = Math.max(chartGeo.s, Math.min(last.P.n, k));
+    drawChart();
+  }
+  cv.addEventListener("pointerdown", onPtr);
+  cv.addEventListener("pointermove", onPtr);
+  cv.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") { hoverIdx = -1; drawChart(); } });
+
+  // ডেমো ট্রেডের বোতাম
+  Array.prototype.forEach.call(document.querySelectorAll("#ppCard [data-pct]"), function (b) {
+    b.addEventListener("click", function () {
+      $("ppAmt").value = String(Math.floor(readPP().cash * (+b.dataset.pct) / 100 * 100) / 100);
+    });
+  });
+  $("ppSug").addEventListener("click", function () {
+    if (last && last.sizeCost) $("ppAmt").value = String(Math.floor(Math.min(last.sizeCost, readPP().cash) * 100) / 100);
+  });
+  function doTrade(side, frac, okText) {
+    var r = ppTrade(side, frac);
+    ppMsg(r || okText + " (লাইভ দামে: " + fmt(last.S.live) + ")", !r);
+    if (last) renderPaper();
+  }
+  $("ppBuy").addEventListener("click", function () { doTrade("BUY", 1, "ডেমো কেনা হয়েছে"); });
+  $("ppSell2").addEventListener("click", function () { doTrade("SELL", 0.5, "অর্ধেক বিক্রি হয়েছে"); });
+  $("ppSell").addEventListener("click", function () { doTrade("SELL", 1, "সব বিক্রি হয়েছে"); });
+  var ppArmed = null;
+  $("ppReset").addEventListener("click", function () {
+    var b = $("ppReset");
+    if (!ppArmed) {
+      b.textContent = "নিশ্চিত? আবার চাপুন, ডেমো অ্যাকাউন্ট নতুন হবে";
+      ppArmed = setTimeout(function () { ppArmed = null; b.textContent = "ডেমো অ্যাকাউন্ট রিসেট"; }, 4000);
+    } else {
+      clearTimeout(ppArmed); ppArmed = null; b.textContent = "ডেমো অ্যাকাউন্ট রিসেট";
+      var st = parseFloat($("ppStart").value); if (!(st >= 10)) st = 1000;
+      writePP({ cash: st, start: st, pos: {}, log: [] }); ppMsg("", true);
+      if (last) renderPaper();
+    }
+  });
+  $("ppAmt").value = load("ppAmt", "100");
+  $("ppAmt").addEventListener("input", function () { save("ppAmt", $("ppAmt").value); });
+  setInterval(tickClock, 1000);
+  tickClock();
   window.addEventListener("resize", drawChart);
   if (window.matchMedia) {
     var mq = window.matchMedia("(prefers-color-scheme: dark)");
