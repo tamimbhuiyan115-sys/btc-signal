@@ -61,7 +61,7 @@ input[type=text], input[type=number] {
   color: var(--fg); background: var(--surface);
   border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-width: 0;
 }
-#pair { width: 120px; text-transform: uppercase; text-align: center; font-weight: 600; }
+#pair { width: 150px; text-transform: uppercase; text-align: center; font-weight: 600; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 .tfs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
@@ -113,6 +113,10 @@ ul.rs li:first-child { border-top: 0; }
 ul.rs .m { flex: 0 0 18px; text-align: center; font-weight: 800; }
 ul.rs .p { color: var(--buy); } ul.rs .n { color: var(--sell); } ul.rs .z { color: var(--muted); }
 
+ul.rs li .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+ul.rs li .st { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.st.win { color: var(--buy); } .st.loss { color: var(--sell); } .st.open { color: var(--muted); }
+button.go.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); margin-top: 10px; padding: 10px; font-weight: 500; }
 .opts { display: flex; flex-direction: column; gap: 8px; }
 .opts label { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.92rem; }
 .opts input { width: 20px; height: 20px; accent-color: var(--accent); }
@@ -129,7 +133,7 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
 <div class="wrap">
   <header>
     <h1>BTC সিগনাল</h1>
-    <input type="text" id="pair" list="coins" value="BTC" maxlength="10" autocapitalize="characters" autocomplete="off" aria-label="কয়েন (যেমন BTC)">
+    <input type="text" id="pair" list="coins" value="BTC" maxlength="16" autocapitalize="characters" autocomplete="off" aria-label="কয়েন বা পেয়ার (যেমন BTC অথবা ETH/BTC)">
     <datalist id="coins">
       <option value="BTC"><option value="ETH"><option value="SOL"><option value="XRP"><option value="BNB">
       <option value="DOGE"><option value="ADA"><option value="LINK"><option value="AVAX"><option value="TON">
@@ -162,13 +166,13 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
   <section class="card" id="chartCard" hidden>
     <h2>প্রাইস চার্ট</h2>
     <canvas id="chart"></canvas>
-    <div class="small">ক্যান্ডেল + EMA9 (গাঢ়), EMA21, Bollinger ব্যান্ড (ঝাপসা)</div>
+    <div class="small">ক্যান্ডেল + EMA9 (গাঢ়), EMA21, Bollinger ব্যান্ড (ঝাপসা)। ডানের ছায়াঘেরা অংশ হলো আগামী কয়েক ক্যান্ডেলে দাম সাধারণত যে পরিসরে থাকে (ATR ভিত্তিক অনুমান), আর মাঝের ড্যাশ লাইনের ঢাল আসে ইতিহাসে এই সিগনালের গড় ফল থেকে। এটা ভবিষ্যদ্বাণী নয়।</div>
   </section>
 
   <section class="card" id="sizeCard" hidden>
     <h2>কত কিনবেন (সাইজ ক্যালকুলেটর)</h2>
     <div class="fields">
-      <label>আপনার পুঁজি (USDT)<input type="number" id="capital" inputmode="decimal" min="1" step="any" value="100"></label>
+      <label>আপনার পুঁজি (কোট মুদ্রায়, যেমন USDT)<input type="number" id="capital" inputmode="decimal" min="1" step="any" value="100"></label>
       <label>প্রতি ট্রেডে ঝুঁকি (%)<input type="number" id="risk" inputmode="decimal" min="0.1" max="10" step="any" value="1"></label>
     </div>
     <div id="sizeBox">
@@ -183,6 +187,14 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
     <p class="small" id="accNote"></p>
   </section>
 
+  <section class="card" id="trkCard" hidden>
+    <h2>লাইভ সিগনাল ট্র্যাকার (আসল সময়ের পরীক্ষা)</h2>
+    <dl class="kv" id="trkKv"></dl>
+    <ul class="rs" id="trkList" style="margin-top:8px"></ul>
+    <p class="small" id="trkNote"></p>
+    <button class="go ghost" id="trkClear" type="button">ট্র্যাকার মুছুন</button>
+  </section>
+
   <section class="card" id="indCard" hidden>
     <h2>ইন্ডিকেটর বিশ্লেষণ</h2>
     <ul class="rs" id="reasons"></ul>
@@ -194,6 +206,8 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
     <div class="opts">
       <label><input type="checkbox" id="live" checked> লাইভ আপডেট (পেজ খোলা থাকলে নিজে রিফ্রেশ)</label>
       <label><input type="checkbox" id="htfOn" checked> উচ্চ টাইমফ্রেম দিয়ে নিশ্চিত করা (ভুল সিগনাল কমায়)</label>
+      <label><input type="checkbox" id="strict" checked> কঠোর মোড: ইতিহাসে ৫৫%-এর কম সঠিক বা ২০ বারের কম আসা সিগনাল দেবে না</label>
+      <label><input type="checkbox" id="rec" checked> BUY/SELL সিগনাল ট্র্যাকারে নিজে রেকর্ড করা</label>
     </div>
     <div class="fields" style="grid-template-columns:1fr; margin-top:12px">
       <label>KuCoin প্রক্সি লিংক (ঐচ্ছিক, KuCoin-এর আসল দামের জন্য)
@@ -211,9 +225,9 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
 "use strict";
 /* ================= সেটিংস ================= */
 var TFS = {
-  "1m":  { label: "১ মিনিট",  ku: "1min",  bn: "1m",  htf: "15m", refresh: 15,  h: 10 },
-  "5m":  { label: "৫ মিনিট",  ku: "5min",  bn: "5m",  htf: "1h",  refresh: 20,  h: 8 },
-  "15m": { label: "১৫ মিনিট", ku: "15min", bn: "15m", htf: "1h",  refresh: 30,  h: 6 },
+  "1m":  { label: "১ মিনিট",  ku: "1min",  bn: "1m",  htf: "15m", refresh: 30,  h: 10 },
+  "5m":  { label: "৫ মিনিট",  ku: "5min",  bn: "5m",  htf: "1h",  refresh: 30,  h: 8 },
+  "15m": { label: "১৫ মিনিট", ku: "15min", bn: "15m", htf: "1h",  refresh: 45,  h: 6 },
   "1h":  { label: "১ ঘণ্টা",  ku: "1hour", bn: "1h",  htf: "4h",  refresh: 60,  h: 6 },
   "4h":  { label: "৪ ঘণ্টা",  ku: "4hour", bn: "4h",  htf: "1d",  refresh: 90,  h: 6 },
   "1d":  { label: "১ দিন",    ku: "1day",  bn: "1d",  htf: "1w",  refresh: 120, h: 5 },
@@ -247,8 +261,23 @@ function kuBase() {
   var p = ($("proxy").value || "").trim().replace(/\/+$/, "");
   return /^https:\/\/[^\s]+$/.test(p) ? p : "https://api.kucoin.com";
 }
-function fetchKucoin(base, tf) {
-  return getJSON(kuBase() + "/api/v1/market/candles?type=" + tf.ku + "&symbol=" + base + "-USDT").then(function (j) {
+function fetchKucoin(base, tf, retried) {
+  return fetchKucoinOnce(base, tf).catch(function (e) {
+    // 429 = অল্প সময়ে অনেক অনুরোধ। একটু থেমে একবার আবার চেষ্টা
+    if (!retried && e && /429/.test(e.message)) {
+      return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return fetchKucoin(base, tf, true); });
+    }
+    throw e;
+  });
+}
+var htfCache = {};
+function fetchHtf(base, key) {
+  var k = base + "|" + key, c = htfCache[k];
+  if (c && Date.now() - c.at < 180000) return Promise.resolve(c.d);   // উচ্চ টাইমফ্রেম ৩ মিনিট জমা রাখা, অনুরোধ অর্ধেক
+  return fetchCandles(base, key).then(function (d) { htfCache[k] = { at: Date.now(), d: d }; return d; });
+}
+function fetchKucoinOnce(base, tf) {
+  return getJSON(kuBase() + "/api/v1/market/candles?type=" + tf.ku + "&symbol=" + base).then(function (j) {
     if (j.code !== "200000" || !Array.isArray(j.data) || j.data.length < 60) throw new Error("KuCoin ডেটা নেই");
     return j.data.slice(0, 1000).reverse().map(function (r) {
       return { t: +r[0] * 1000, o: +r[1], c: +r[2], h: +r[3], l: +r[4], v: +r[5] };
@@ -256,7 +285,7 @@ function fetchKucoin(base, tf) {
   });
 }
 function fetchBinance(base, tf) {
-  return getJSON("https://data-api.binance.vision/api/v3/klines?symbol=" + base + "USDT&interval=" + tf.bn + "&limit=1000").then(function (j) {
+  return getJSON("https://data-api.binance.vision/api/v3/klines?symbol=" + base.replace("-", "") + "&interval=" + tf.bn + "&limit=1000").then(function (j) {
     if (!Array.isArray(j) || j.length < 60) throw new Error("Binance ডেটা নেই");
     return j.map(function (r) { return { t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }; });
   });
@@ -441,13 +470,14 @@ function render() {
   var L = last, S = L.S, fin = L.fin, cls = fin.f.toLowerCase();
   var base = L.base;
 
-  $("pairLabel").textContent = base + "/USDT";
+  var sp = splitSym(base);
+  $("pairLabel").textContent = sp.coin + "/" + sp.quote;
   $("tfLabel").textContent = TFS[L.key].label;
-  $("livePrice").textContent = fmt(S.live) + " USDT";
+  $("livePrice").textContent = fmt(S.live) + " " + sp.quote;
   $("updated").textContent = "আপডেট: " + new Date().toLocaleTimeString("en-GB");
   var sw = $("srcWarn");
   if (source !== "kucoin") {
-    sw.textContent = "⚠️ KuCoin থেকে ডেটা আসেনি (কারণ: " + kuErr + "). দেখানো দাম Binance-এর, তাই KuCoin-এর দামের সাথে সামান্য ফারাক থাকতে পারে। ট্রেডের আগে KuCoin অ্যাপে আসল দাম দেখে নিন।";
+    sw.textContent = "⚠️ KuCoin থেকে ডেটা আসেনি (" + (kuBase() === "https://api.kucoin.com" ? "সরাসরি সংযোগ" : "প্রক্সি দিয়ে") + ", কারণ: " + kuErr + "). দেখানো দাম Binance-এর, তাই KuCoin-এর দামের সাথে সামান্য ফারাক থাকতে পারে। ট্রেডের আগে KuCoin অ্যাপে আসল দাম দেখে নিন।";
     sw.hidden = false;
   } else { sw.hidden = true; }
 
@@ -459,6 +489,8 @@ function render() {
   $("vbar").style.width = strength + "%";
   var txt = TEXT[fin.f];
   if (S.filtered) txt = "ট্রেন্ডের জোর কম (ADX " + S.adx.toFixed(0) + "), বাজার সাইডওয়েজ। এই সময়ে সিগনাল ভুল হওয়ার সম্ভাবনা বেশি, তাই অপেক্ষা।";
+  if (fin.gate) txt = "সিগনাল ছিল " + fin.raw + ", কিন্তু মান-ফিল্টারে আটকেছে: " + fin.gate;
+  else if (fin.q) txt += " ইতিহাসে এই সিগনাল " + fin.q;
   $("vtext").textContent = txt;
   var htfLine = "";
   if (L.H) htfLine = "উচ্চ টাইমফ্রেম (" + TFS[L.htfKey].label + "): " + L.H.decision + (fin.note ? " | " + fin.note : "");
@@ -471,12 +503,13 @@ function render() {
     b.hidden = false;
   }
   prevFinal[key] = fin.f;
-  document.title = fin.f + " · " + base + " " + fmt(S.live);
+  document.title = fin.f + " · " + sp.coin + " " + fmt(S.live);
 
   $("chartCard").hidden = false;
   drawChart();
   renderSize();
   renderAcc();
+  renderTracker();
 
   $("indCard").hidden = false;
   var ul = $("reasons"); ul.innerHTML = "";
@@ -494,6 +527,7 @@ function render() {
     ["Stochastic K / D", isNaN(P.k[i]) ? "–" : P.k[i].toFixed(0) + " / " + P.d[i].toFixed(0)],
     ["Bollinger %B", isNaN(pb) ? "–" : pb.toFixed(2)],
     ["ATR (গড় চলন)", fmt(P.atr[i])],
+    ["সাপোর্ট / রেজিস্ট্যান্স (৫০ ক্যান্ডেল)", fmt(Math.min.apply(null, P.l.slice(i - 49, i + 1))) + " / " + fmt(Math.max.apply(null, P.h.slice(i - 49, i + 1)))],
     ["EMA 9 / 21 / 50 / 200", fmt(P.e9[i]) + " / " + fmt(P.e21[i]) + " / " + fmt(P.e50[i]) + " / " + fmt(P.e200[i])]
   ]);
 
@@ -519,13 +553,13 @@ function renderSize() {
   var cost = qty * price;
   var lossAtStop = qty * stopDist, gainAtTgt = qty * tgtDist;
   var rows = [
-    ["কিনবেন (USDT)", fmt(cost)],
-    ["পরিমাণ (" + last.base + ")", qty.toFixed(price >= 100 ? 6 : 4)],
+    ["কিনবেন (" + splitSym(last.base).quote + ")", fmt(cost)],
+    ["পরিমাণ (" + splitSym(last.base).coin + ")", qty.toFixed(price >= 100 ? 6 : 4)],
     ["এন্ট্রি (বর্তমান দাম)", fmt(price)],
     ["স্টপ-লস", fmt(price - stopDist) + " (−" + pct(stopDist / price, 2) + ")"],
     ["টার্গেট", fmt(price + tgtDist) + " (+" + pct(tgtDist / price, 2) + ")"],
-    ["স্টপ-লসে সর্বোচ্চ ক্ষতি", fmt(lossAtStop) + " USDT"],
-    ["টার্গেটে সম্ভাব্য লাভ", fmt(gainAtTgt) + " USDT"]
+    ["স্টপ-লসে সর্বোচ্চ ক্ষতি", fmt(lossAtStop) + " " + splitSym(last.base).quote],
+    ["টার্গেটে সম্ভাব্য লাভ", fmt(gainAtTgt) + " " + splitSym(last.base).quote]
   ];
   kv($("sizeKv"), rows);
   var box = $("sizeBox");
@@ -574,15 +608,17 @@ function drawChart() {
   var N = Math.min(90, P.n), s = P.n - N, padR = 64, padT = 10, padB = 10;
   var showLv = last.fin.f === "BUY";
   var S = last.S, stop = S.live - 1.5 * S.atr, tgt = S.live + 3 * S.atr;
+  var FC = forecast(last), F = FC.F;
   var lo = Infinity, hi = -Infinity, i;
   for (i = s; i < P.n; i++) {
     lo = Math.min(lo, P.l[i]); hi = Math.max(hi, P.h[i]);
     if (!isNaN(P.bbl[i])) { lo = Math.min(lo, P.bbl[i]); hi = Math.max(hi, P.bbu[i]); }
   }
   if (showLv) { lo = Math.min(lo, stop); hi = Math.max(hi, tgt); }
+  lo = Math.min(lo, FC.dn[F]); hi = Math.max(hi, FC.up[F]);
   var padv = (hi - lo) * 0.04; lo -= padv; hi += padv;
   var Y = function (v) { return padT + (hi - v) / (hi - lo) * (h - padT - padB); };
-  var cw = (w - padR) / N, X = function (k) { return (k - s) * cw + cw / 2; };
+  var cw = (w - padR) / (N + F), X = function (k) { return (k - s) * cw + cw / 2; };
 
   g.font = "11px -apple-system, system-ui, sans-serif";
   g.textBaseline = "middle";
@@ -605,6 +641,17 @@ function drawChart() {
   g.globalAlpha = 0.45;
   line(P.bbu, col("--muted"), 1, [3, 3]); line(P.bbl, col("--muted"), 1, [3, 3]);
   g.globalAlpha = 1;
+
+  // সম্ভাব্য পরিসর (ছায়াঘেরা অংশ) ও মাঝের গড় ঢাল
+  var x0 = X(P.n - 1), k2;
+  g.beginPath(); g.moveTo(x0, Y(FC.mid[0]));
+  for (k2 = 1; k2 <= F; k2++) g.lineTo(X(P.n - 1 + k2), Y(FC.up[k2]));
+  for (k2 = F; k2 >= 0; k2--) g.lineTo(X(P.n - 1 + k2), Y(FC.dn[k2]));
+  g.closePath(); g.globalAlpha = 0.14; g.fillStyle = col("--accent"); g.fill(); g.globalAlpha = 1;
+  g.beginPath(); g.strokeStyle = col("--accent"); g.lineWidth = 1.5; g.setLineDash([5, 4]);
+  g.moveTo(x0, Y(FC.mid[0]));
+  for (k2 = 1; k2 <= F; k2++) g.lineTo(X(P.n - 1 + k2), Y(FC.mid[k2]));
+  g.stroke(); g.setLineDash([]);
 
   var bw = Math.max(1.5, cw * 0.62);
   for (i = s; i < P.n; i++) {
@@ -632,12 +679,130 @@ function drawChart() {
   hline(S.live, col("--fg"), fmt(S.live), [2, 3]);
 }
 
+/* ================= মান-ফিল্টার (ইতিহাসে যাচাই করা) ================= */
+function applyGate(fin, BT, strict) {
+  fin.raw = fin.f;
+  if (fin.f === "HOLD" || !strict) return fin;
+  var o = fin.f === "BUY" ? BT.buy : BT.sell;
+  var wr = o.n ? o.win / o.n : 0, avg = o.n ? o.sum / o.n : 0;
+  var edge = fin.f === "BUY" ? avg > 0 : avg < 0;
+  if (o.n < 20) {
+    fin.f = "HOLD";
+    fin.gate = "ইতিহাসে এই সিগনাল মাত্র " + o.n + " বার এসেছে, যাচাইয়ের জন্য কমপক্ষে ২০ বার দরকার।";
+  } else if (wr < 0.55 || !edge) {
+    fin.f = "HOLD";
+    fin.gate = "ইতিহাসে এই কয়েন ও টাইমফ্রেমে এই সিগনাল " + pct(wr, 0) + " সঠিক ছিল (" + o.n + " বারে), মান যথেষ্ট নয়।";
+  } else {
+    fin.q = pct(wr, 0) + " সঠিক ছিল (" + o.n + " বারে)।";
+  }
+  return fin;
+}
+
+/* ================= সম্ভাব্য পরিসর (ATR ভিত্তিক অনুমান) ================= */
+function forecast(L) {
+  var S = L.S, F = TFS[L.key].h, f = L.fin.f, drift = 0;
+  var o = f === "BUY" ? L.BT.buy : f === "SELL" ? L.BT.sell : null;
+  if (o && o.n >= 20) drift = S.live * (o.sum / o.n) / F;     // ইতিহাসে এই সিগনালের গড় ফল থেকে ঢাল
+  var up = [], dn = [], mid = [];
+  for (var k = 0; k <= F; k++) {
+    var c = S.live + drift * k, w = S.atr * Math.sqrt(k);
+    mid.push(c); up.push(c + w); dn.push(c - w);
+  }
+  return { F: F, mid: mid, up: up, dn: dn, drift: drift };
+}
+
+/* ================= লাইভ সিগনাল ট্র্যাকার ================= */
+var SIG_KEY = "sigs2";
+function readSigs() {
+  try { var a = JSON.parse(load(SIG_KEY, "[]")); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function writeSigs(a) { save(SIG_KEY, JSON.stringify(a.slice(-300))); }
+function closeSig(g, px, why) {
+  g.exit = px; g.why = why; g.et = Date.now();
+  g.pnl = g.side === "BUY" ? (px / g.entry - 1) - FEE : (g.entry - px) / g.entry - FEE;
+  g.status = g.pnl > 0 ? "win" : "loss";
+}
+function track(L) {
+  var sigs = readSigs(), changed = false, S = L.S, cd = L.cd;
+
+  // ১) চলমান সিগনালগুলো আসল দামের চলনে যাচাই
+  sigs.forEach(function (g) {
+    if (g.status !== "open" || g.sym !== L.base || g.tf !== L.key) return;
+    var n = 0, res = null, buy = g.side === "BUY";
+    for (var j = 0; j < cd.length && !res; j++) {
+      if (cd[j].t <= g.t) continue;                      // এন্ট্রির পরে শুরু হওয়া ক্যান্ডেল
+      n++;
+      var hitSL = buy ? cd[j].l <= g.sl : cd[j].h >= g.sl;
+      var hitTP = buy ? cd[j].h >= g.tp : cd[j].l <= g.tp;
+      if (hitSL) res = { px: g.sl, why: "SL" };           // একই ক্যান্ডেলে দুটোই ছুঁলে ক্ষতি ধরা হয়
+      else if (hitTP) res = { px: g.tp, why: "TP" };
+      else if (n >= 48) res = { px: cd[j].c, why: "সময়শেষ" };
+    }
+    if (!res) {                                           // এন্ট্রির ক্যান্ডেলেই লাইভ দাম ছুঁয়েছে কিনা
+      var lv = S.live;
+      if (buy ? lv <= g.sl : lv >= g.sl) res = { px: g.sl, why: "SL" };
+      else if (buy ? lv >= g.tp : lv <= g.tp) res = { px: g.tp, why: "TP" };
+    }
+    if (res) { closeSig(g, res.px, res.why); changed = true; }
+  });
+
+  // ২) নতুন সিগনাল রেকর্ড (একই পেয়ার ও টাইমফ্রেমে একটা চলমান থাকলে নতুন নয়)
+  if ($("rec").checked && (L.fin.f === "BUY" || L.fin.f === "SELL")) {
+    var dup = sigs.some(function (g) { return g.status === "open" && g.sym === L.base && g.tf === L.key; });
+    if (!dup) {
+      var b = L.fin.f === "BUY";
+      sigs.push({
+        id: Date.now(), sym: L.base, tf: L.key, side: L.fin.f, entry: S.live,
+        sl: b ? S.live - 1.5 * S.atr : S.live + 1.5 * S.atr,
+        tp: b ? S.live + 3 * S.atr : S.live - 3 * S.atr,
+        t: Date.now(), status: "open"
+      });
+      changed = true;
+    }
+  }
+  if (changed) writeSigs(sigs);
+}
+function renderTracker() {
+  var sigs = readSigs(), closed = sigs.filter(function (g) { return g.status !== "open"; });
+  var open = sigs.length - closed.length;
+  var wins = closed.filter(function (g) { return g.pnl > 0; }).length;
+  var sum = closed.reduce(function (a, g) { return a + g.pnl; }, 0);
+  $("trkCard").hidden = false;
+  kv($("trkKv"), [
+    ["রেকর্ড করা সিগনাল", String(sigs.length)],
+    ["চলমান", String(open)],
+    ["শেষ হয়েছে", String(closed.length)],
+    ["সফল (ফি বাদে লাভ)", closed.length ? pct(wins / closed.length, 0) + " (" + wins + "/" + closed.length + ")" : "এখনো কিছু শেষ হয়নি"],
+    ["গড় ফলাফল প্রতি সিগনাল", closed.length ? (sum / closed.length >= 0 ? "+" : "") + pct(sum / closed.length, 2) : "–"],
+    ["মোট ফলাফল (যোগফল)", closed.length ? (sum >= 0 ? "+" : "") + pct(sum, 2) : "–"]
+  ]);
+  var ul = $("trkList"); ul.innerHTML = "";
+  sigs.slice(-10).reverse().forEach(function (g) {
+    var li = el("li"), sp = splitSym(g.sym);
+    var left = el("span", "grow", g.side + " " + sp.coin + "/" + sp.quote + " " + g.tf + " @ " + fmt(g.entry) +
+      " (SL " + fmt(g.sl) + ", TP " + fmt(g.tp) + ") · " + new Date(g.t).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }));
+    var right = el("span", "st " + g.status, g.status === "open" ? "চলমান" : (g.pnl >= 0 ? "+" : "") + pct(g.pnl, 2) + " " + g.why);
+    li.appendChild(left); li.appendChild(right); ul.appendChild(li);
+  });
+  if (!sigs.length) ul.appendChild(el("li", "", "এখনো কোনো BUY/SELL সিগনাল রেকর্ড হয়নি। সিগনাল এলে এখানে দেখাবে।"));
+  $("trkNote").textContent =
+    "যখনই BUY বা SELL সিগনাল আসে, তখনকার আসল দাম, স্টপ-লস ও টার্গেট এখানে রেকর্ড হয়। তারপর আসল দামের চলনে টার্গেট না স্টপ-লস আগে ছোঁয়া হলো তা হিসাব হয় (৪৮ ক্যান্ডেলে কোনোটাই না ছুঁলে বন্ধ ধরা হয়)। এটা সিমুলেশন নয়, কিন্তু আসল টাকাও লাগে না। SELL ধরা হয় দাম কমার সিগনাল হিসেবে (স্পটে শর্ট করা যায় না)। ফলাফল শুধু এই ফোনের ব্রাউজারে জমা থাকে। পেজ বন্ধ থাকলে কোনো যাচাই হয় না, পরের বার ওই পেয়ার ও টাইমফ্রেম খুললে ক্যান্ডেল ইতিহাস থেকে হিসাব মেটে।";
+}
+
 /* ================= মূল প্রবাহ ================= */
-var BAD_COIN = "কয়েনের নাম ঠিক নেই। শুধু কয়েনের নাম লিখুন, যেমন BTC বা ETH (USDT লিখবেন না, পেয়ার সবসময় /USDT)।";
+var BAD_COIN = "পেয়ারের নাম ঠিক নেই। শুধু কয়েন লিখুন (BTC, ETH), অথবা পুরো পেয়ার (ETH/BTC, SOL-USDC)। শুধু USDT লিখলে চলবে না।";
+function splitSym(sym) { var p = sym.split("-"); return { coin: p[0], quote: p[1] || "USDT" }; }
+// ইনপুট থেকে KuCoin পেয়ার বানায়: "btc" → "BTC-USDT", "eth/btc" → "ETH-BTC", "BTCUSDT" → "BTC-USDT"
 function getBase() {
-  var b = $("pair").value.trim().toUpperCase().replace(/[\s\/\-_]/g, "");
-  if (b.length > 4 && b.slice(-4) === "USDT") b = b.slice(0, -4);   // BTC/USDT, BTCUSDT লিখলেও চলবে
-  return /^[A-Z0-9]{2,10}$/.test(b) && b !== "USDT" ? b : null;
+  var raw = $("pair").value.trim().toUpperCase().replace(/\s+/g, "");
+  var coin, quote = "USDT", m = raw.split(/[\/\-_]/);
+  if (m.length === 2) { coin = m[0]; quote = m[1]; }
+  else if (m.length === 1) {
+    coin = m[0];
+    if (coin.length > 4 && /(USDT|USDC)$/.test(coin)) { quote = coin.slice(-4); coin = coin.slice(0, -4); }
+  } else return null;
+  if (!/^[A-Z0-9]{2,10}$/.test(coin) || !/^[A-Z0-9]{2,6}$/.test(quote) || coin === quote) return null;
+  return coin + "-" + quote;
 }
 function showError(msg) { var e = $("error"); e.textContent = msg; e.hidden = !msg; }
 function schedule() {
@@ -655,13 +820,16 @@ function run(manual) {
   var useH = $("htfOn").checked && tf.htf;
   Promise.all([
     fetchCandles(base, key),
-    useH ? fetchCandles(base, tf.htf).catch(function () { return null; }) : Promise.resolve(null)
+    useH ? fetchHtf(base, tf.htf).catch(function () { return null; }) : Promise.resolve(null)
   ]).then(function (res) {
     var cd = res[0];
     var P = compute(cd), S = analyzeLatest(P);
     var H = res[1] ? analyzeLatest(compute(res[1])) : null;
-    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: finalDecision(S, H), BT: backtest(P, tf.h) };
+    var BT = backtest(P, tf.h);
+    var fin = applyGate(finalDecision(S, H), BT, $("strict").checked);
+    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT };
     $("dot").className = "dot on";
+    track(last);
     render();
   }).catch(function (err) {
     showError("ডেটা আনা যায়নি (" + (err && err.message ? err.message : "অজানা এরর") + "). কয়েনের নাম বা ইন্টারনেট দেখে আবার চেষ্টা করুন। সমস্যা থাকলে এই লেখাটা আমাকে পাঠান।");
@@ -688,15 +856,17 @@ function run(manual) {
     $("tfLabel").textContent = TFS[curTf].label;
   }
   var st = load("tf", "1h"); curTf = TFS[st] && TF_BUTTONS.indexOf(st) >= 0 ? st : "1h";
-  var sp = load("pair", "BTC"); if (/^[A-Z0-9]{2,10}$/.test(sp) && sp !== "USDT") $("pair").value = sp;
+  var sp0 = load("pair", "BTC-USDT");
+  if (/^[A-Z0-9]{2,10}(-[A-Z0-9]{2,6})?$/.test(sp0) && sp0 !== "USDT") $("pair").value = sp0.replace(/-USDT$/, "");
   $("capital").value = load("capital", "100"); $("risk").value = load("risk", "1");
   $("proxy").value = load("proxy", "");
   $("live").checked = load("live", "1") === "1"; $("htfOn").checked = load("htf", "1") === "1";
+  $("strict").checked = load("strict", "1") === "1"; $("rec").checked = load("rec", "1") === "1";
   markTf();
 
   $("go").addEventListener("click", function () { run(true); });
   $("pair").addEventListener("change", function () {
-    var b = getBase(); if (b) { save("pair", b); $("pair").value = b; $("banner").hidden = true; run(true); }
+    var b = getBase(); if (b) { save("pair", b); $("pair").value = b.replace(/-USDT$/, ""); $("banner").hidden = true; run(true); }
     else showError(BAD_COIN);
   });
   $("proxy").addEventListener("change", function () {
@@ -706,6 +876,19 @@ function run(manual) {
   $("risk").addEventListener("input", renderSize);
   $("live").addEventListener("change", function () { save("live", $("live").checked ? "1" : "0"); schedule(); });
   $("htfOn").addEventListener("change", function () { save("htf", $("htfOn").checked ? "1" : "0"); run(true); });
+  $("strict").addEventListener("change", function () { save("strict", $("strict").checked ? "1" : "0"); run(true); });
+  $("rec").addEventListener("change", function () { save("rec", $("rec").checked ? "1" : "0"); });
+  var armed = null;
+  $("trkClear").addEventListener("click", function () {
+    var b = $("trkClear");
+    if (!armed) {
+      b.textContent = "নিশ্চিত? আবার চাপুন, সব রেকর্ড মুছে যাবে";
+      armed = setTimeout(function () { armed = null; b.textContent = "ট্র্যাকার মুছুন"; }, 4000);
+    } else {
+      clearTimeout(armed); armed = null; b.textContent = "ট্র্যাকার মুছুন";
+      writeSigs([]); renderTracker();
+    }
+  });
   window.addEventListener("resize", drawChart);
   if (window.matchMedia) {
     var mq = window.matchMedia("(prefers-color-scheme: dark)");
