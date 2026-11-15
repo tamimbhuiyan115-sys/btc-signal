@@ -139,6 +139,31 @@ button.go {
 }
 button.go:disabled { opacity: 0.6; cursor: progress; }
 [hidden] { display: none !important; }
+
+canvas#mapChart { width: 100%; height: 420px; display: block; touch-action: pan-y; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.chip { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"], .chip.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.card h3 { font-size: 0.82rem; margin: 14px 0 6px; color: var(--fg); }
+.predbox .arrow.up, .predbox .big.up { color: var(--buy); }
+.predbox .arrow.dn, .predbox .big.dn { color: var(--sell); }
+.pbar { display: flex; height: 22px; border-radius: 8px; overflow: hidden; background: var(--line); margin: 4px 0 8px; font-size: 0.72rem; font-weight: 700; color: #fff; }
+.pbar i { display: block; font-style: normal; padding: 3px 6px; white-space: nowrap; overflow: hidden; min-width: 0; }
+.pbar i.up { background: var(--buy); } .pbar i.dn { background: var(--sell); text-align: right; }
+dd.str.strong { color: var(--buy); } dd.str.weak { color: var(--hold); }
+dd.pos { color: var(--buy); } dd.neg { color: var(--sell); }
+ul.rs li.g { color: var(--fg); } 
+.su { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px 10px; margin: 6px 0; }
+.su.buy { border-left: 4px solid var(--buy); } .su.sell { border-left: 4px solid var(--sell); }
+.su.pri { background: var(--bg); }
+.suh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+table.tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 4px; border-bottom: 1px solid var(--line); }
+table.tbl td { padding: 4px 4px; border-bottom: 1px solid var(--line); }
+table.tbl td.num { text-align: right; }
+table.tbl td.b { font-weight: 700; }
+td.sg { font-weight: 700; font-size: 0.72rem; text-align: right; color: var(--muted); } td.sg.g { color: var(--buy); } td.sg.r { color: var(--sell); }
+details > summary { cursor: pointer; font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--line); }
 </style>
 </head>
 <body>
@@ -186,12 +211,33 @@ button.go:disabled { opacity: 0.6; cursor: progress; }
     <div class="small">ক্যান্ডেল + EMA9 (গাঢ়), EMA21, Bollinger ব্যান্ড (ঝাপসা)। ডানের নীল ক্যান্ডেল হলো পরের ক্যান্ডেলের পূর্বাভাস (▲ উপরে, ▼ নিচে, সাথে সম্ভাবনা), আর "?" মানে পরিষ্কার ঝোঁক নেই। ধূসর ছায়াঘেরা অংশ হলো আগামী কয়েক ক্যান্ডেলে দাম সাধারণত যে পরিসরে থাকে (ATR ভিত্তিক অনুমান), আর মাঝের ড্যাশ লাইনের ঢাল আসে ইতিহাসে এই সিগনালের গড় ফল থেকে। এটা ভবিষ্যদ্বাণী নয়।</div>
   </section>
 
-  <section class="card" id="npCard" hidden>
-    <h2>পরের ক্যান্ডেলের পূর্বাভাস (নীল ক্যান্ডেল)</h2>
-    <div class="predbox"><div class="arrow" id="npArrow">?</div><div><div class="big" id="npText"></div><div class="small" id="npSub"></div></div></div>
-    <dl class="kv" id="npKv"></dl>
-    <ul class="rs" id="npList" style="margin-top:8px"></ul>
-    <p class="small" id="npNote"></p>
+  <section class="card" id="mapCard" hidden>
+    <h2 id="mapTitle">AI চার্ট ম্যাপ</h2>
+    <div class="chips" id="mapChips"></div>
+    <div class="chips"><button class="chip" id="mapZin" type="button">＋ জুম</button><button class="chip" id="mapZout" type="button">－ জুম</button><button class="chip" id="mapReset" type="button">⟲ রিসেট</button></div>
+    <canvas id="mapChart"></canvas>
+    <div class="readout" id="mapReadout"></div>
+    <div class="small">ক্যান্ডেলের উপর অটো আঁকা: সবুজ/লাল জোন (Demand/Supply), Order Block, FVG, S/R লাইন, Fibonacci (0.382/0.5/0.618/0.786), HH/HL/LH/LL, BOS/CHOCH, Liquidity Sweep, Double Top/Bottom, Head &amp; Shoulders। সবুজ ঘর লাভের জোন, লাল ঘর স্টপ-লস জোন। নীল ▲/▼ পরের ক্যান্ডেলের পূর্বাভাস। এসব নিয়ম-ভিত্তিক গাণিতিক শনাক্তকরণ, ভবিষ্যদ্বাণী নয়।</div>
+  </section>
+
+  <section class="card" id="pdCard" hidden>
+    <h2>পরের ক্যান্ডেলের AI পূর্বাভাস</h2>
+    <div id="pdBody"></div>
+  </section>
+
+  <section class="card" id="suCard" hidden>
+    <h2>BUY / SELL ট্রেড সেটআপ</h2>
+    <div id="suBody"></div>
+  </section>
+
+  <section class="card" id="hsCard" hidden>
+    <h2>পূর্বাভাসের রেকর্ড ও সঠিকতা (টাইমফ্রেম আলাদা)</h2>
+    <div id="hsBody"></div>
+  </section>
+
+  <section class="card" id="inCard" hidden>
+    <h2>৮০টি টেকনিক্যাল ইন্ডিকেটর</h2>
+    <div id="inBody"></div>
   </section>
 
   <section class="card" id="ppCard" hidden>
@@ -564,7 +610,7 @@ function render() {
   renderSize();
   renderAcc();
   renderTracker();
-  renderNext();
+  try { renderAI(); } catch (ex) { if (window.console) console.error(ex); }
   renderPaper();
   tickClock();
 
@@ -681,6 +727,8 @@ function tickClock() {
   if (last) {
     var end = last.P.t[last.P.n - 1] + TFMS[last.key], rem = Math.round((end - Date.now()) / 1000);
     $("cdown").textContent = rem > 0 ? "ক্যান্ডেল বন্ধ হতে: " + fmtDur(rem) : "নতুন ক্যান্ডেল আসছে...";
+    var nw = Date.now();
+    if (last.ENG && last.ENG.ok && !busy && nw > last.ENG.close + 3000 && nw - aiAutoAt > 20000) { aiAutoAt = nw; run(false); }
   }
 }
 function setReadout() {
@@ -944,92 +992,6 @@ function renderTracker() {
 
 /* ================= পরের ক্যান্ডেলের পূর্বাভাস ও লাইভ যাচাই ================= */
 var TFMS = { "1m": 60000, "5m": 300000, "15m": 900000, "1h": 3600000, "4h": 14400000, "1d": 86400000, "1w": 604800000 };
-function bucketOf(s) { return s <= -5 ? 0 : s <= -2 ? 1 : s <= 1 ? 2 : s <= 4 ? 3 : 4; }
-// ইতিহাসে একই স্কোর-গোষ্ঠীতে পরের ক্যান্ডেল কতবার উপরে বন্ধ হয়েছে, সেই হার থেকে পূর্বাভাস
-function predictNext(P, BT) {
-  var sc = signalAt(P, P.n - 1).score, st = BT.nb[bucketOf(sc)];
-  var p = (st.u + 1) / (st.n + 2), up = p >= 0.5, conf = up ? p : 1 - p;
-  return { score: sc, n: st.n, pUp: p, dir: up ? "up" : "down", conf: conf, call: st.n >= 30 && conf >= 0.53 };
-}
-var NP_KEY = "npred";
-function readNP() {
-  try { var a = JSON.parse(load(NP_KEY, "[]")); return Array.isArray(a) ? a : []; } catch (e) { return []; }
-}
-function writeNP(a) { save(NP_KEY, JSON.stringify(a.slice(-500))); }
-function trackNext(L) {
-  var arr = readNP(), changed = false, now = Date.now(), tfms = TFMS[L.key], cd = L.cd, n = cd.length, i;
-
-  // ১) যে ক্যান্ডেল বন্ধ হয়ে গেছে, তার আসল ফলের সাথে মিলিয়ে সঠিক/ভুল গোনা
-  arr.forEach(function (r) {
-    if (r.status !== "pending" || r.sym !== L.base || r.tf !== L.key) return;
-    if (now < r.target + tfms) return;
-    var c = null, j;
-    for (j = n - 1; j >= 0; j--) {
-      if (cd[j].t === r.target) { c = cd[j]; break; }
-      if (cd[j].t < r.target) break;
-    }
-    if (!c) { if (now > r.target + 3 * tfms) { r.status = "expired"; changed = true; } return; }
-    if (j === n - 1 && now < r.target + tfms + 20000) return;       // নতুন ক্যান্ডেল না আসা পর্যন্ত অপেক্ষা
-    r.o = c.o; r.c = c.c;
-    r.status = c.c === c.o ? "flat" : ((c.c > c.o) === (r.dir === "up") ? "hit" : "miss");
-    changed = true;
-  });
-
-  // ২) পরের ক্যান্ডেলের জন্য কল রেকর্ড (ক্যান্ডেল শুরুর আগ পর্যন্ত বদলানো যায়, শুরু হলে স্থির)
-  var target = L.P.t[L.P.n - 1] + tfms, k = L.base + "|" + L.key + "|" + target, idx = -1;
-  for (i = 0; i < arr.length; i++) if (arr[i].k === k) idx = i;
-  if (now < target) {
-    if (L.NP.call) {
-      if (idx >= 0) {
-        if (arr[idx].status === "pending") { arr[idx].dir = L.NP.dir; arr[idx].p = L.NP.conf; arr[idx].made = now; changed = true; }
-      } else {
-        arr.push({ k: k, sym: L.base, tf: L.key, target: target, dir: L.NP.dir, p: L.NP.conf, made: now, status: "pending" });
-        changed = true;
-      }
-    } else if (idx >= 0 && arr[idx].status === "pending") { arr.splice(idx, 1); changed = true; }
-  }
-  if (changed) writeNP(arr);
-}
-function renderNext() {
-  var L = last, NP = L.NP, tfms = TFMS[L.key], target = L.P.t[L.P.n - 1] + tfms;
-  $("npCard").hidden = false;
-  $("npArrow").textContent = NP.call ? (NP.dir === "up" ? "▲" : "▼") : "?";
-  $("npText").textContent = NP.call
-    ? "পরের ক্যান্ডেল " + (NP.dir === "up" ? "উপরে (সবুজ)" : "নিচে (লাল)") + " বন্ধ হওয়ার ঝোঁক, " + pct(NP.conf, 0)
-    : "পরিষ্কার ঝোঁক নেই, তাই কোনো কল দেওয়া হচ্ছে না";
-  $("npSub").textContent = "ইতিহাসে এমন অবস্থা " + NP.n + " বার এসেছিল, তার " + pct(NP.pUp, 0) + " বার পরের ক্যান্ডেল উপরে বন্ধ হয়েছে।";
-
-  var arr = readNP();
-  function stat(list) {
-    var g = list.filter(function (r) { return r.status === "hit" || r.status === "miss"; });
-    var h = g.filter(function (r) { return r.status === "hit"; }).length;
-    return g.length ? h + "/" + g.length + " সঠিক (" + pct(h / g.length, 0) + ")" : "এখনো কোনো ক্যান্ডেল বন্ধ হয়নি";
-  }
-  var cur = arr.filter(function (r) { return r.sym === L.base && r.tf === L.key; });
-  var strong = arr.filter(function (r) { return r.p >= 0.58; });
-  var pending = arr.filter(function (r) { return r.status === "pending"; }).length;
-  kv($("npKv"), [
-    ["পরের ক্যান্ডেল শুরু", fmtFull(target)],
-    ["লাইভ যাচাই: সব কল", stat(arr)],
-    ["এই পেয়ার ও টাইমফ্রেমে", stat(cur)],
-    ["জোরালো কল (৫৮% বা বেশি)", stat(strong)],
-    ["যাচাইয়ের অপেক্ষায়", String(pending)]
-  ]);
-  var ul = $("npList"); ul.innerHTML = "";
-  arr.slice(-8).reverse().forEach(function (r) {
-    var li = el("li"), sp = splitSym(r.sym);
-    var left = el("span", "grow", (r.dir === "up" ? "▲ " : "▼ ") + sp.coin + "/" + sp.quote + " " + r.tf + " · " + fmtFull(r.target) + " · " + Math.round(r.p * 100) + "%" +
-      (r.c ? " · আসলে " + (r.c > r.o ? "উপরে" : r.c < r.o ? "নিচে" : "সমান") + " (" + (r.c >= r.o ? "+" : "") + pct(r.c / r.o - 1, 2) + ")" : ""));
-    var cls = r.status === "hit" ? "win" : r.status === "miss" ? "loss" : "open";
-    var txt = r.status === "hit" ? "সঠিক ✓" : r.status === "miss" ? "ভুল ✗" : r.status === "pending" ? "অপেক্ষায়" : r.status === "flat" ? "সমান" : "বাতিল";
-    li.appendChild(left); li.appendChild(el("span", "st " + cls, txt)); ul.appendChild(li);
-  });
-  if (!arr.length) ul.appendChild(el("li", "", "এখনো কোনো কল রেকর্ড হয়নি। পেজ খোলা রাখলে নিজে রেকর্ড ও যাচাই হবে।"));
-  $("npNote").textContent =
-    "পেজ প্রতিবার পরের ক্যান্ডেলের জন্য কল রেকর্ড করে, ক্যান্ডেল শুরু হলে সেটা আর বদলায় না। ক্যান্ডেল বন্ধ হলে আসল ফলের সাথে মিলিয়ে নিজে সঠিক বা ভুল গোনে। পূর্বাভাস শুধু তখনই দেয় যখন ইতিহাসে অন্তত ৩০ বার একই অবস্থা এসেছে আর একদিকে ৫৩% বা বেশি ঝোঁক ছিল। " +
-    "মনে রাখবেন, পরের একটা ক্যান্ডেলের দিক আন্দাজ করা খুবই কঠিন। পেশাদার সিস্টেমেও ৫৫–৬০% এর বেশি পাওয়া যায় না, আর ১০০টার কম কলের ফলে ভরসা করা যায় না। ৯৯% সম্ভব নয়, এই সংখ্যাটাই আসল মাপকাঠি। যাচাই শুধু পেজ খোলা থাকা অবস্থায় হয়।";
-}
-
 /* ================= ডেমো ট্রেড (নকল টাকা, আসল দামে) ================= */
 var PP_KEY = "paper", PP_FEE = 0.001;
 function readPP() {
@@ -1107,6 +1069,1321 @@ function renderPaper() {
     : "ডেমো ট্রেড এখন শুধু USDT পেয়ারে চলে। BTC, ETH, SOL ইত্যাদি কয়েন লিখে ব্যবহার করুন।";
 }
 
+function bucketOf(s) { return s <= -5 ? 0 : s <= -2 ? 1 : s <= 1 ? 2 : s <= 4 ? 3 : 4; }
+/* ================= AI ইঞ্জিন ১: গাণিতিক সহায়ক ও ৮০ ইন্ডিকেটর ================= */
+function NA(n) { var a = new Array(n), i; for (i = 0; i < n; i++) a[i] = NaN; return a; }
+function smaA(a, n) {
+  var o = NA(a.length), s = 0, bad = 0, i;
+  for (i = 0; i < a.length; i++) {
+    if (isFinite(a[i])) s += a[i]; else bad++;
+    if (i >= n) { if (isFinite(a[i - n])) s -= a[i - n]; else bad--; }
+    if (i >= n - 1 && bad === 0) o[i] = s / n;
+  }
+  return o;
+}
+function sumA(a, n) {
+  var o = NA(a.length), s = 0, bad = 0, i;
+  for (i = 0; i < a.length; i++) {
+    if (isFinite(a[i])) s += a[i]; else bad++;
+    if (i >= n) { if (isFinite(a[i - n])) s -= a[i - n]; else bad--; }
+    if (i >= n - 1 && bad === 0) o[i] = s;
+  }
+  return o;
+}
+function emaA(a, n, alpha) {
+  var k = alpha || 2 / (n + 1), o = NA(a.length), p = NaN, i;
+  for (i = 0; i < a.length; i++) {
+    var x = a[i];
+    if (isFinite(x)) p = isFinite(p) ? k * x + (1 - k) * p : x;
+    o[i] = p;
+  }
+  return o;
+}
+function rmaA(a, n) { return emaA(a, n, 1 / n); }
+function wmaA(a, n) {
+  var o = NA(a.length), den = n * (n + 1) / 2, i, j;
+  for (i = n - 1; i < a.length; i++) {
+    var s = 0, ok = true;
+    for (j = 0; j < n; j++) { var x = a[i - n + 1 + j]; if (!isFinite(x)) { ok = false; break; } s += x * (j + 1); }
+    if (ok) o[i] = s / den;
+  }
+  return o;
+}
+function sdA(a, n) {
+  var o = NA(a.length), i, j;
+  for (i = n - 1; i < a.length; i++) {
+    var s = 0, ok = true;
+    for (j = i - n + 1; j <= i; j++) { if (!isFinite(a[j])) { ok = false; break; } s += a[j]; }
+    if (!ok) continue;
+    var m = s / n, q = 0;
+    for (j = i - n + 1; j <= i; j++) q += (a[j] - m) * (a[j] - m);
+    o[i] = Math.sqrt(q / n);
+  }
+  return o;
+}
+function maxA(a, n) {
+  var o = NA(a.length), i, j;
+  for (i = n - 1; i < a.length; i++) {
+    var m = -Infinity, ok = true;
+    for (j = i - n + 1; j <= i; j++) { if (!isFinite(a[j])) { ok = false; break; } if (a[j] > m) m = a[j]; }
+    if (ok) o[i] = m;
+  }
+  return o;
+}
+function minA(a, n) {
+  var o = NA(a.length), i, j;
+  for (i = n - 1; i < a.length; i++) {
+    var m = Infinity, ok = true;
+    for (j = i - n + 1; j <= i; j++) { if (!isFinite(a[j])) { ok = false; break; } if (a[j] < m) m = a[j]; }
+    if (ok) o[i] = m;
+  }
+  return o;
+}
+function lin(a, b, ka, kb) { var o = NA(a.length), i; for (i = 0; i < a.length; i++) o[i] = ka * a[i] + kb * b[i]; return o; }
+function dvA(a, b) { var o = NA(a.length), i; for (i = 0; i < a.length; i++) o[i] = (isFinite(b[i]) && b[i] !== 0) ? a[i] / b[i] : NaN; return o; }
+function mapA(a, f) { var o = NA(a.length), i; for (i = 0; i < a.length; i++) o[i] = f(a[i], i); return o; }
+function normCdf(x) {
+  var t = 1 / (1 + 0.2316419 * Math.abs(x));
+  var d = 0.3989422804014327 * Math.exp(-x * x / 2);
+  var p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  return x > 0 ? 1 - p : p;
+}
+function normInv(p) {
+  var lo = -6, hi = 6, k, m;
+  for (k = 0; k < 40; k++) { m = (lo + hi) / 2; if (normCdf(m) < p) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+
+var CATS = [
+  { k: "T", name: "ট্রেন্ড / মুভিং এভারেজ", w: 0.22 },
+  { k: "D", name: "ট্রেন্ডের দিক ও জোর", w: 0.20 },
+  { k: "M", name: "মোমেন্টাম / অসিলেটর", w: 0.20 },
+  { k: "V", name: "ভোলাটিলিটি ও ব্যান্ড", w: 0.08 },
+  { k: "L", name: "ভলিউম", w: 0.12 },
+  { k: "A", name: "প্রাইস অ্যাকশন (ক্যান্ডেল)", w: 0.08 }
+];
+var W_STRUCT = 0.10;   // মার্কেট স্ট্রাকচারের (BOS/CHOCH ট্রেন্ড) ওজন
+
+function buildInd(P) {
+  var n = P.n, o = P.o, h = P.h, l = P.l, c = P.c, v = P.v, i, j, k;
+  var L = [];
+  function add(name, cat, arr, sg, kind) { L.push({ name: name, cat: cat, v: arr, s: sg, kind: kind || "n" }); }
+  function pv(name, cat, arr) {
+    add(name, cat, arr, function (q) { var m = arr[q]; return !isFinite(m) ? 0 : c[q] > m ? 1 : c[q] < m ? -1 : 0; }, "p");
+  }
+  function zs(name, cat, arr, th, kind) {
+    th = th || 0;
+    add(name, cat, arr, function (q) { var m = arr[q]; return !isFinite(m) ? 0 : m > th ? 1 : m < -th ? -1 : 0; }, kind || "n");
+  }
+  function ct(name, cat, arr, lo, hi, kind) {
+    add(name, cat, arr, function (q) { var m = arr[q]; return !isFinite(m) ? 0 : m < lo ? 1 : m > hi ? -1 : 0; }, kind || "n");
+  }
+  function df(name, cat, a, b, kind) { zs(name, cat, lin(a, b, 1, -1), 0, kind || "p"); }
+  function rise(name, cat, arr, kind) {
+    add(name, cat, arr, function (q) {
+      if (q < 1) return 0;
+      var m = arr[q], z = arr[q - 1];
+      return (!isFinite(m) || !isFinite(z)) ? 0 : m > z ? 1 : m < z ? -1 : 0;
+    }, kind || "n");
+  }
+  function dirA(name, cat, lvl, dir, kind) {
+    add(name, cat, lvl, function (q) { return isFinite(lvl[q]) ? dir[q] : 0; }, kind || "p");
+  }
+  function info(name, cat, arr, kind) { add(name, cat, arr, function () { return 0; }, kind || "n"); }
+
+  var tr = NA(n); tr[0] = h[0] - l[0];
+  for (i = 1; i < n; i++) tr[i] = Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1]));
+  var atr14 = rmaA(tr, 14), atr10 = rmaA(tr, 10), atr50 = rmaA(tr, 50);
+  var hl2 = mapA(c, function (x, q) { return (h[q] + l[q]) / 2; });
+  var tp = mapA(c, function (x, q) { return (h[q] + l[q] + c[q]) / 3; });
+  var body = mapA(c, function (x, q) { return Math.abs(c[q] - o[q]); });
+  var rng = mapA(c, function (x, q) { return h[q] - l[q]; });
+  var chg = NA(n); for (i = 1; i < n; i++) chg[i] = c[i] - c[i - 1];
+
+  /* ---- T: ট্রেন্ড / মুভিং এভারেজ (16) ---- */
+  var s20 = smaA(c, 20), s50 = smaA(c, 50), s100 = smaA(c, 100), s200 = smaA(c, 200);
+  pv("SMA 20", "T", s20); pv("SMA 50", "T", s50); pv("SMA 100", "T", s100); pv("SMA 200", "T", s200);
+  pv("EMA 9", "T", P.e9); pv("EMA 21", "T", P.e21); pv("EMA 50", "T", P.e50); pv("EMA 200", "T", P.e200);
+  pv("WMA 20", "T", wmaA(c, 20));
+  pv("HMA 21", "T", wmaA(lin(wmaA(c, 10), wmaA(c, 21), 2, -1), 5));
+  var d1 = emaA(c, 21), d2 = emaA(d1, 21), d3 = emaA(d2, 21);
+  pv("DEMA 21", "T", lin(d1, d2, 2, -1));
+  pv("TEMA 21", "T", lin(lin(d1, d2, 3, -3), d3, 1, 1));
+  var cv = mapA(c, function (x, q) { return c[q] * v[q]; });
+  pv("VWMA 20", "T", dvA(sumA(cv, 20), sumA(v, 20)));
+  var kama = NA(n);
+  if (n > 10) {
+    kama[9] = c[9];
+    for (i = 10; i < n; i++) {
+      var vol = 0; for (j = i - 9; j <= i; j++) vol += Math.abs(c[j] - c[j - 1]);
+      var er = vol > 0 ? Math.abs(c[i] - c[i - 10]) / vol : 0;
+      var scK = Math.pow(er * (2 / 3 - 2 / 31) + 2 / 31, 2);
+      kama[i] = kama[i - 1] + scK * (c[i] - kama[i - 1]);
+    }
+  }
+  pv("KAMA 10", "T", kama);
+  df("EMA 9/21 ক্রসওভার", "T", P.e9, P.e21);
+  df("SMA 50/200 (গোল্ডেন/ডেথ ক্রস)", "T", s50, s200);
+
+  /* ---- D: ট্রেন্ডের দিক ও জোর (12) ---- */
+  var stLvl = NA(n), stDir = NA(n);
+  (function () {
+    var fub = NA(n), flb = NA(n), a = atr10;
+    for (i = 1; i < n; i++) {
+      var ub = hl2[i] + 3 * a[i], lb = hl2[i] - 3 * a[i];
+      if (i === 1 || !isFinite(fub[i - 1])) { fub[i] = ub; flb[i] = lb; stLvl[i] = c[i] >= lb ? lb : ub; stDir[i] = c[i] >= lb ? 1 : -1; continue; }
+      fub[i] = (ub < fub[i - 1] || c[i - 1] > fub[i - 1]) ? ub : fub[i - 1];
+      flb[i] = (lb > flb[i - 1] || c[i - 1] < flb[i - 1]) ? lb : flb[i - 1];
+      if (stDir[i - 1] === -1) { if (c[i] > fub[i]) { stDir[i] = 1; stLvl[i] = flb[i]; } else { stDir[i] = -1; stLvl[i] = fub[i]; } }
+      else { if (c[i] < flb[i]) { stDir[i] = -1; stLvl[i] = fub[i]; } else { stDir[i] = 1; stLvl[i] = flb[i]; } }
+    }
+  })();
+  dirA("Supertrend (10,3)", "D", stLvl, stDir);
+  var sar = NA(n), sarDir = NA(n);
+  (function () {
+    if (n < 3) return;
+    var bull = c[1] > c[0], s = bull ? l[0] : h[0], ep = bull ? h[0] : l[0], af = 0.02;
+    for (i = 1; i < n; i++) {
+      s = s + af * (ep - s);
+      if (bull) {
+        s = Math.min(s, l[i - 1], i > 1 ? l[i - 2] : l[i - 1]);
+        if (l[i] < s) { bull = false; s = ep; ep = l[i]; af = 0.02; }
+        else if (h[i] > ep) { ep = h[i]; af = Math.min(af + 0.02, 0.2); }
+      } else {
+        s = Math.max(s, h[i - 1], i > 1 ? h[i - 2] : h[i - 1]);
+        if (h[i] > s) { bull = true; s = ep; ep = h[i]; af = 0.02; }
+        else if (l[i] < ep) { ep = l[i]; af = Math.min(af + 0.02, 0.2); }
+      }
+      sar[i] = s; sarDir[i] = bull ? 1 : -1;
+    }
+  })();
+  dirA("Parabolic SAR", "D", sar, sarDir);
+  add("ADX / DI (14)", "D", P.adx, function (q) {
+    if (!isFinite(P.adx[q]) || !isFinite(P.pdi[q])) return 0;
+    return P.adx[q] < 20 ? 0 : P.pdi[q] > P.mdi[q] ? 1 : -1;
+  });
+  var aU = NA(n), aD = NA(n);
+  for (i = 25; i < n; i++) {
+    var ih = i - 25, il = i - 25;
+    for (j = i - 25; j <= i; j++) { if (h[j] >= h[ih]) ih = j; if (l[j] <= l[il]) il = j; }
+    aU[i] = (25 - (i - ih)) / 25 * 100; aD[i] = (25 - (i - il)) / 25 * 100;
+  }
+  zs("Aroon (25)", "D", lin(aU, aD, 1, -1), 10);
+  var vmp = NA(n), vmm = NA(n);
+  for (i = 1; i < n; i++) { vmp[i] = Math.abs(h[i] - l[i - 1]); vmm[i] = Math.abs(l[i] - h[i - 1]); }
+  var vtr = sumA(tr, 14);
+  zs("Vortex (14)", "D", lin(dvA(sumA(vmp, 14), vtr), dvA(sumA(vmm, 14), vtr), 1, -1), 0, "r");
+  var hh9 = maxA(h, 9), ll9 = minA(l, 9), hh26 = maxA(h, 26), ll26 = minA(l, 26), hh52 = maxA(h, 52), ll52 = minA(l, 52);
+  var tenkan = NA(n), kijun = NA(n), spA = NA(n), spB = NA(n);
+  for (i = 0; i < n; i++) { tenkan[i] = (hh9[i] + ll9[i]) / 2; kijun[i] = (hh26[i] + ll26[i]) / 2; }
+  for (i = 26; i < n; i++) { spA[i] = (tenkan[i - 26] + kijun[i - 26]) / 2; spB[i] = (hh52[i - 26] + ll52[i - 26]) / 2; }
+  df("Ichimoku Tenkan/Kijun", "D", tenkan, kijun);
+  add("Ichimoku ক্লাউড", "D", mapA(c, function (x, q) { return (spA[q] + spB[q]) / 2; }), function (q) {
+    if (!isFinite(spA[q]) || !isFinite(spB[q])) return 0;
+    return c[q] > Math.max(spA[q], spB[q]) ? 1 : c[q] < Math.min(spA[q], spB[q]) ? -1 : 0;
+  }, "p");
+  var hh20 = maxA(h, 20), ll20 = minA(l, 20);
+  pv("Donchian (20) মিডলাইন", "D", mapA(c, function (x, q) { return (hh20[q] + ll20[q]) / 2; }));
+  var lrs = NA(n), sx = 0, sxx = 0;
+  for (k = 0; k < 20; k++) { sx += k; sxx += k * k; }
+  for (i = 19; i < n; i++) {
+    var sy = 0, sxy = 0;
+    for (k = 0; k < 20; k++) { var y = c[i - 19 + k]; sy += y; sxy += k * y; }
+    lrs[i] = (20 * sxy - sx * sy) / (20 * sxx - sx * sx) / c[i] * 100;
+  }
+  zs("Linear Regression স্লোপ (20)", "D", lrs, 0.005, "r");
+  var chDir = NA(n), chLvl = NA(n), hh22 = maxA(h, 22), ll22 = minA(l, 22);
+  (function () {
+    var dir = 0;
+    for (i = 22; i < n; i++) {
+      var lng = hh22[i] - 3 * atr14[i], sht = ll22[i] + 3 * atr14[i];
+      if (i > 22) {
+        var pl = hh22[i - 1] - 3 * atr14[i - 1], ps = ll22[i - 1] + 3 * atr14[i - 1];
+        if (c[i] > ps) dir = 1; else if (c[i] < pl) dir = -1;
+      }
+      chDir[i] = dir; chLvl[i] = dir >= 0 ? lng : sht;
+    }
+  })();
+  add("Chandelier Exit (22,3)", "D", chLvl, function (q) { return isFinite(chLvl[q]) ? chDir[q] : 0; }, "p");
+  var haC = mapA(c, function (x, q) { return (o[q] + h[q] + l[q] + c[q]) / 4; }), haO = NA(n);
+  haO[0] = (o[0] + c[0]) / 2; for (i = 1; i < n; i++) haO[i] = (haO[i - 1] + haC[i - 1]) / 2;
+  zs("Heikin-Ashi ট্রেন্ড", "D", lin(haC, haO, 1, -1), 0, "p");
+  var e13 = emaA(c, 13);
+  add("Elder Ray (13)", "D", mapA(c, function (x, q) { return h[q] - e13[q]; }), function (q) {
+    if (q < 1) return 0;
+    var bear = l[q] - e13[q], bearP = l[q - 1] - e13[q - 1], bull = h[q] - e13[q], bullP = h[q - 1] - e13[q - 1];
+    if (e13[q] > e13[q - 1] && bear > bearP) return 1;
+    if (e13[q] < e13[q - 1] && bull < bullP) return -1;
+    return 0;
+  }, "p");
+
+  /* ---- M: মোমেন্টাম / অসিলেটর (22) ---- */
+  ct("RSI (14)", "M", P.rsi, 30, 70);
+  var rsi7 = rsiCalc(c, 7);
+  ct("RSI (7)", "M", rsi7, 25, 75);
+  add("Stochastic (14,3,3)", "M", P.k, function (q) {
+    var K = P.k[q], D = P.d[q];
+    if (!isFinite(K) || !isFinite(D)) return 0;
+    return K < 20 && K > D ? 1 : K > 80 && K < D ? -1 : 0;
+  });
+  var rmin = minA(P.rsi, 14), rmax = maxA(P.rsi, 14);
+  ct("Stochastic RSI (14)", "M", mapA(c, function (x, q) { return rmax[q] === rmin[q] ? NaN : (P.rsi[q] - rmin[q]) / (rmax[q] - rmin[q]); }), 0.2, 0.8, "r");
+  var tps = smaA(tp, 20), cci = NA(n);
+  for (i = 19; i < n; i++) {
+    if (!isFinite(tps[i])) continue;
+    var md = 0; for (j = i - 19; j <= i; j++) md += Math.abs(tp[j] - tps[i]);
+    md /= 20; cci[i] = md > 0 ? (tp[i] - tps[i]) / (0.015 * md) : 0;
+  }
+  ct("CCI (20)", "M", cci, -100, 100);
+  var hh14 = maxA(h, 14), ll14 = minA(l, 14);
+  ct("Williams %R (14)", "M", mapA(c, function (x, q) { return hh14[q] === ll14[q] ? NaN : (hh14[q] - c[q]) / (hh14[q] - ll14[q]) * -100; }), -80, -20);
+  zs("ROC (10)", "M", mapA(c, function (x, q) { return q >= 10 ? (c[q] / c[q - 10] - 1) * 100 : NaN; }), 0, "pct");
+  zs("Momentum (10)", "M", mapA(c, function (x, q) { return q >= 10 ? c[q] - c[q - 10] : NaN; }), 0, "p");
+  zs("MACD লাইন", "M", P.macd, 0, "p");
+  zs("MACD হিস্টোগ্রাম", "M", P.hist, 0, "p");
+  var e12 = emaA(c, 12), e26 = emaA(c, 26), ppo = mapA(c, function (x, q) { return (e12[q] - e26[q]) / e26[q] * 100; });
+  zs("PPO (12,26,9)", "M", lin(ppo, emaA(ppo, 9), 1, -1), 0, "r");
+  var e3 = emaA(emaA(emaA(c, 15), 15), 15);
+  zs("TRIX (15)", "M", mapA(c, function (x, q) { return q > 0 ? (e3[q] / e3[q - 1] - 1) * 10000 : NaN; }), 0);
+  var up1 = mapA(c, function (x, q) { return q > 0 ? Math.max(c[q] - c[q - 1], 0) : NaN; });
+  var dn1 = mapA(c, function (x, q) { return q > 0 ? Math.max(c[q - 1] - c[q], 0) : NaN; });
+  var su = sumA(up1, 14), sd1 = sumA(dn1, 14);
+  zs("CMO (14)", "M", mapA(c, function (x, q) { return (su[q] + sd1[q]) > 0 ? 100 * (su[q] - sd1[q]) / (su[q] + sd1[q]) : NaN; }), 0);
+  var bp = NA(n), tr2 = NA(n);
+  for (i = 1; i < n; i++) { bp[i] = c[i] - Math.min(l[i], c[i - 1]); tr2[i] = Math.max(h[i], c[i - 1]) - Math.min(l[i], c[i - 1]); }
+  var b7 = sumA(bp, 7), b14 = sumA(bp, 14), b28 = sumA(bp, 28), t7 = sumA(tr2, 7), t14 = sumA(tr2, 14), t28 = sumA(tr2, 28);
+  ct("Ultimate Oscillator", "M", mapA(c, function (x, q) { return 100 * (4 * b7[q] / t7[q] + 2 * b14[q] / t14[q] + b28[q] / t28[q]) / 7; }), 30, 70);
+  var ao = lin(smaA(hl2, 5), smaA(hl2, 34), 1, -1);
+  zs("Awesome Oscillator", "M", ao, 0, "p");
+  zs("Accelerator Oscillator", "M", lin(ao, smaA(ao, 5), 1, -1), 0, "p");
+  var tsiNum = emaA(emaA(chg, 25), 13), tsiDen = emaA(emaA(mapA(chg, function (x) { return Math.abs(x); }), 25), 13);
+  zs("TSI (25,13)", "M", dvA(tsiNum, tsiDen).map(function (x) { return x * 100; }), 0);
+  zs("DPO (20)", "M", mapA(c, function (x, q) { return q >= 11 ? c[q - 11] - s20[q] : NaN; }), 0, "p");
+  var roc14 = mapA(c, function (x, q) { return q >= 14 ? (c[q] / c[q - 14] - 1) * 100 : NaN; });
+  var roc11 = mapA(c, function (x, q) { return q >= 11 ? (c[q] / c[q - 11] - 1) * 100 : NaN; });
+  rise("Coppock Curve", "M", wmaA(lin(roc14, roc11, 1, 1), 10));
+  var cmo1 = mapA(c, function (x, q) { return c[q] - o[q]; });
+  var rn = NA(n), rd = NA(n);
+  for (i = 3; i < n; i++) {
+    rn[i] = (cmo1[i] + 2 * cmo1[i - 1] + 2 * cmo1[i - 2] + cmo1[i - 3]) / 6;
+    rd[i] = (rng[i] + 2 * rng[i - 1] + 2 * rng[i - 2] + rng[i - 3]) / 6;
+  }
+  var rvi = dvA(smaA(rn, 10), smaA(rd, 10)), rviS = NA(n);
+  for (i = 3; i < n; i++) rviS[i] = (rvi[i] + 2 * rvi[i - 1] + 2 * rvi[i - 2] + rvi[i - 3]) / 6;
+  zs("RVI (10)", "M", lin(rvi, rviS, 1, -1), 0, "r");
+  var hh10 = maxA(hl2, 10), ll10 = minA(hl2, 10), fish = NA(n), fx = 0, fp = 0;
+  for (i = 9; i < n; i++) {
+    var rr = hh10[i] === ll10[i] ? 0 : (hl2[i] - ll10[i]) / (hh10[i] - ll10[i]) - 0.5;
+    fx = 0.66 * rr + 0.67 * fx;
+    var xc = Math.max(-0.999, Math.min(0.999, fx));
+    fp = 0.5 * Math.log((1 + xc) / (1 - xc)) + 0.5 * fp;
+    fish[i] = fp;
+  }
+  rise("Fisher Transform (10)", "M", fish);
+  var bopr = mapA(c, function (x, q) { return rng[q] > 0 ? (c[q] - o[q]) / rng[q] : 0; });
+  zs("Balance of Power (14)", "M", smaA(bopr, 14), 0.02, "r");
+
+  /* ---- V: ভোলাটিলিটি ও ব্যান্ড (10) ---- */
+  var pb = mapA(c, function (x, q) { return (c[q] - P.bbl[q]) / (P.bbu[q] - P.bbl[q]); });
+  ct("Bollinger %B (20,2)", "V", pb, 0, 1, "r");
+  info("Bollinger ব্যান্ডউইডথ", "V", mapA(c, function (x, q) { return (P.bbu[q] - P.bbl[q]) / P.bbm[q] * 100; }), "pct");
+  var kmid = emaA(c, 20);
+  add("Keltner Channel (20,2)", "V", kmid, function (q) {
+    if (!isFinite(atr10[q]) || !isFinite(kmid[q])) return 0;
+    return c[q] > kmid[q] + 2 * atr10[q] ? 1 : c[q] < kmid[q] - 2 * atr10[q] ? -1 : 0;
+  }, "p");
+  info("ATR (14) % দামের", "V", mapA(c, function (x, q) { return atr14[q] / c[q] * 100; }), "pct");
+  var sd20b = sdA(c, 20);
+  info("Standard Deviation (20) %", "V", mapA(c, function (x, q) { return sd20b[q] / c[q] * 100; }), "pct");
+  add("Donchian ব্রেকআউট (20)", "V", hh20, function (q) {
+    if (q < 1 || !isFinite(hh20[q - 1])) return 0;
+    return c[q] > hh20[q - 1] ? 1 : c[q] < ll20[q - 1] ? -1 : 0;
+  }, "p");
+  var sd20 = sdA(c, 20);
+  ct("Z-Score (20)", "V", mapA(c, function (x, q) { return sd20[q] > 0 ? (c[q] - s20[q]) / sd20[q] : NaN; }), -2, 2);
+  var sTR14 = sumA(tr, 14);
+  info("Choppiness Index (14)", "V", mapA(c, function (x, q) { return hh14[q] > ll14[q] && sTR14[q] > 0 ? 100 * Math.log(sTR14[q] / (hh14[q] - ll14[q])) / Math.log(14) : NaN; }));
+  add("Range Expansion", "V", mapA(c, function (x, q) { return tr[q] / atr14[q]; }), function (q) {
+    if (!isFinite(atr14[q]) || tr[q] < 1.5 * atr14[q]) return 0;
+    return c[q] > o[q] ? 1 : c[q] < o[q] ? -1 : 0;
+  }, "r");
+  info("ভোলাটিলিটি রিজিম (ATR14/ATR50)", "V", dvA(atr14, atr50), "r");
+
+  /* ---- L: ভলিউম (12) ---- */
+  var clv = mapA(c, function (x, q) { return rng[q] > 0 ? ((c[q] - l[q]) - (h[q] - c[q])) / rng[q] : 0; });
+  var obv = NA(n); obv[0] = 0; for (i = 1; i < n; i++) obv[i] = obv[i - 1] + (c[i] > c[i - 1] ? v[i] : c[i] < c[i - 1] ? -v[i] : 0);
+  df("OBV", "L", obv, smaA(obv, 20), "p");
+  var adl = NA(n); adl[0] = clv[0] * v[0]; for (i = 1; i < n; i++) adl[i] = adl[i - 1] + clv[i] * v[i];
+  df("Accumulation/Distribution", "L", adl, smaA(adl, 20), "p");
+  var cmf = dvA(sumA(mapA(c, function (x, q) { return clv[q] * v[q]; }), 20), sumA(v, 20));
+  zs("Chaikin Money Flow (20)", "L", cmf, 0.05, "r");
+  zs("Chaikin Oscillator (3,10)", "L", lin(emaA(adl, 3), emaA(adl, 10), 1, -1), 0, "p");
+  var mfp = NA(n), mfn = NA(n);
+  for (i = 1; i < n; i++) { var mf = tp[i] * v[i]; mfp[i] = tp[i] > tp[i - 1] ? mf : 0; mfn[i] = tp[i] < tp[i - 1] ? mf : 0; }
+  var smp = sumA(mfp, 14), smn = sumA(mfn, 14);
+  ct("MFI (14)", "L", mapA(c, function (x, q) { return smn[q] === 0 ? (smp[q] > 0 ? 100 : NaN) : 100 - 100 / (1 + smp[q] / smn[q]); }), 20, 80);
+  var tpv = mapA(c, function (x, q) { return tp[q] * v[q]; });
+  pv("VWAP (রোলিং 20)", "L", dvA(sumA(tpv, 20), sumA(v, 20)));
+  var fi = NA(n); for (i = 1; i < n; i++) fi[i] = (c[i] - c[i - 1]) * v[i];
+  zs("Force Index (13)", "L", emaA(fi, 13), 0, "p");
+  var emv = NA(n);
+  for (i = 1; i < n; i++) { var dm = (h[i] + l[i]) / 2 - (h[i - 1] + l[i - 1]) / 2, br = v[i] > 0 && rng[i] > 0 ? (v[i] / 1e6) / rng[i] : 0; emv[i] = br > 0 ? dm / br : 0; }
+  zs("Ease of Movement (14)", "L", smaA(emv, 14), 0, "p");
+  var vpt = NA(n); vpt[0] = 0; for (i = 1; i < n; i++) vpt[i] = vpt[i - 1] + v[i] * (c[i] / c[i - 1] - 1);
+  df("Volume Price Trend", "L", vpt, smaA(vpt, 20), "p");
+  add("ভলিউম স্পাইক (দিক)", "L", mapA(c, function (x, q) { return P.volAvg[q] > 0 ? v[q] / P.volAvg[q] : NaN; }), function (q) {
+    if (!isFinite(P.volAvg[q]) || v[q] < 1.5 * P.volAvg[q]) return 0;
+    return c[q] > o[q] ? 1 : c[q] < o[q] ? -1 : 0;
+  }, "r");
+  zs("ভলিউম-ওয়েটেড মোমেন্টাম (10)", "L", sumA(mapA(c, function (x, q) { return (c[q] - o[q]) * v[q]; }), 10), 0, "p");
+  var vo = dvA(lin(smaA(v, 5), smaA(v, 20), 1, -1), smaA(v, 20));
+  add("Volume Oscillator (5,20)", "L", vo.map(function (x) { return x * 100; }), function (q) {
+    if (!isFinite(vo[q]) || vo[q] < 0.1) return 0;
+    return c[q] > o[q] ? 1 : c[q] < o[q] ? -1 : 0;
+  }, "pct");
+
+  /* ---- A: প্রাইস অ্যাকশন (8) ---- */
+  add("ক্যান্ডেলের রঙ", "A", cmo1, function (q) { return c[q] > o[q] ? 1 : c[q] < o[q] ? -1 : 0; }, "p");
+  add("Engulfing প্যাটার্ন", "A", NA(n), function (q) {
+    if (q < 1) return 0;
+    if (c[q - 1] < o[q - 1] && c[q] > o[q] && o[q] <= c[q - 1] && c[q] >= o[q - 1]) return 1;
+    if (c[q - 1] > o[q - 1] && c[q] < o[q] && o[q] >= c[q - 1] && c[q] <= o[q - 1]) return -1;
+    return 0;
+  }, "n");
+  add("Hammer / Shooting Star", "A", NA(n), function (q) {
+    if (rng[q] <= 0 || body[q] > 0.4 * rng[q]) return 0;
+    var lw = Math.min(o[q], c[q]) - l[q], uw = h[q] - Math.max(o[q], c[q]);
+    if (lw >= 2 * body[q] && uw <= 0.6 * Math.max(body[q], rng[q] * 0.05)) return 1;
+    if (uw >= 2 * body[q] && lw <= 0.6 * Math.max(body[q], rng[q] * 0.05)) return -1;
+    return 0;
+  }, "n");
+  add("৩-ক্যান্ডেল স্ট্রিক", "A", NA(n), function (q) {
+    if (q < 2) return 0;
+    if (c[q] > c[q - 1] && c[q - 1] > c[q - 2] && c[q] > o[q] && c[q - 1] > o[q - 1]) return 1;
+    if (c[q] < c[q - 1] && c[q - 1] < c[q - 2] && c[q] < o[q] && c[q - 1] < o[q - 1]) return -1;
+    return 0;
+  }, "n");
+  var cpos = mapA(c, function (x, q) { return rng[q] > 0 ? (c[q] - l[q]) / rng[q] : 0.5; });
+  add("রেঞ্জে ক্লোজের অবস্থান", "A", cpos, function (q) { return cpos[q] >= 0.7 ? 1 : cpos[q] <= 0.3 ? -1 : 0; }, "r");
+  var pvt = NA(n);
+  for (i = 24; i < n; i++) {
+    var H = -Infinity, Lw = Infinity;
+    for (j = i - 24; j < i; j++) { if (h[j] > H) H = h[j]; if (l[j] < Lw) Lw = l[j]; }
+    pvt[i] = (H + Lw + c[i - 1]) / 3;
+  }
+  pv("ক্লাসিক পিভট (রোলিং 24)", "A", pvt);
+  add("Higher/Lower High-Low", "A", NA(n), function (q) {
+    if (q < 1) return 0;
+    return h[q] > h[q - 1] && l[q] > l[q - 1] ? 1 : h[q] < h[q - 1] && l[q] < l[q - 1] ? -1 : 0;
+  }, "n");
+  add("Marubozu / শক্তিশালী বডি", "A", mapA(c, function (x, q) { return rng[q] > 0 ? body[q] / rng[q] : 0; }), function (q) {
+    if (rng[q] <= 0 || body[q] < 0.7 * rng[q]) return 0;
+    return c[q] > o[q] ? 1 : -1;
+  }, "r");
+
+  var byCat = {};
+  CATS.forEach(function (ct2) { byCat[ct2.k] = []; });
+  L.forEach(function (d) { byCat[d.cat].push(d); });
+  return { list: L, byCat: byCat };
+}
+
+function indVal(d, i) {
+  var x = d.v[i];
+  if (!isFinite(x)) return d.kind === "n" && d.v.every(function (z) { return !isFinite(z); }) ? "প্যাটার্ন" : "–";
+  if (d.kind === "p") return fmt(x);
+  if (d.kind === "pct") return x.toFixed(2) + "%";
+  var a = Math.abs(x);
+  return x.toFixed(a >= 100 ? 1 : a >= 1 ? 2 : 4);
+}
+
+/* প্রতি ক্যান্ডেলে ক্যাটাগরি-ভিত্তিক গড় ভোট + মার্কেট স্ট্রাকচার = কম্পোজিট স্কোর [-1, +1] */
+function compAt(IND, i, trendAt) {
+  var S = 0, cats = {}, bull = 0, bear = 0, neu = 0;
+  CATS.forEach(function (ct) {
+    var arr = IND.byCat[ct.k], s = 0, q;
+    for (q = 0; q < arr.length; q++) {
+      var sg = arr[q].s(i);
+      s += sg;
+      if (sg > 0) bull++; else if (sg < 0) bear++; else neu++;
+    }
+    var m = arr.length ? s / arr.length : 0;
+    cats[ct.k] = m;
+    S += ct.w * m;
+  });
+  var tsg = trendAt ? (trendAt[i] || 0) : 0;
+  cats.S = tsg;
+  S += W_STRUCT * tsg;
+  return { S: S, cats: cats, bull: bull, bear: bear, neu: neu };
+}
+function bucketS(s) { return s <= -0.25 ? 0 : s <= -0.12 ? 1 : s <= -0.04 ? 2 : s < 0.04 ? 3 : s < 0.12 ? 4 : s < 0.25 ? 5 : 6; }
+var NBK = 7;
+
+
+/* ================= AI ইঞ্জিন ২: চার্ট ম্যাপিং (স্ট্রাকচার, জোন, প্যাটার্ন, ফিবো, সেটআপ) ================= */
+function pivotsRaw(P, K) {
+  var out = [], i, j;
+  for (i = K; i < P.n - K; i++) {
+    var ph = true, pl = true;
+    for (j = 1; j <= K; j++) {
+      if (P.h[i] <= P.h[i - j] || P.h[i] < P.h[i + j]) ph = false;
+      if (P.l[i] >= P.l[i - j] || P.l[i] > P.l[i + j]) pl = false;
+      if (!ph && !pl) break;
+    }
+    if (ph) out.push({ i: i, p: P.h[i], t: "H", c: i + K });
+    if (pl) out.push({ i: i, p: P.l[i], t: "L", c: i + K });
+  }
+  return out;
+}
+function zigzag(raw) {
+  var z = [], q;
+  for (q = 0; q < raw.length; q++) {
+    var p = raw[q], last = z[z.length - 1];
+    if (last && last.t === p.t) {
+      if ((p.t === "H" && p.p > last.p) || (p.t === "L" && p.p < last.p)) z[z.length - 1] = p;
+    } else z.push(p);
+  }
+  return z;
+}
+function zdist(price, lo, hi) { return price < lo ? lo - price : price > hi ? price - hi : 0; }
+function overlap(a, b, tol) { return a.lo <= b.hi + tol && b.lo <= a.hi + tol; }
+
+function buildMap(P) {
+  var n = P.n, M = { n: n, ok: n >= 80 }, i, j, t, q;
+  if (!M.ok) return M;
+  var o = P.o, h = P.h, l = P.l, c = P.c, atrA = P.atr;
+  var atr = atrA[n - 2] > 0 ? atrA[n - 2] : atrA[n - 1];
+  var price = c[n - 1];
+  M.atr = atr; M.price = price;
+  var K = 4;
+  var raw = pivotsRaw(P, K);
+  M.raw = raw;
+
+  /* ---- HH / HL / LH / LL লেবেল ---- */
+  M.labels = [];
+  var lastH = null, lastL = null;
+  raw.forEach(function (pv) {
+    if (pv.t === "H") { if (lastH) M.labels.push({ i: pv.i, p: pv.p, t: pv.p > lastH.p ? "HH" : "LH" }); lastH = pv; }
+    else { if (lastL) M.labels.push({ i: pv.i, p: pv.p, t: pv.p > lastL.p ? "HL" : "LL" }); lastL = pv; }
+  });
+
+  /* ---- BOS / CHOCH (শুধু নিশ্চিত পিভট ধরে, সামনের তথ্য ব্যবহার না করে) ---- */
+  var trend = 0, hiP = null, loP = null, ptr = 0;
+  M.trendAt = new Array(n);
+  M.events = []; M.obs = [];
+  function makeOB(dir, fromI, tt) {
+    var best = -1, ext, jj;
+    if (dir > 0) { ext = Infinity; for (jj = fromI; jj < tt; jj++) if (l[jj] < ext) { ext = l[jj]; best = jj; } }
+    else { ext = -Infinity; for (jj = fromI; jj < tt; jj++) if (h[jj] > ext) { ext = h[jj]; best = jj; } }
+    if (best >= 0) M.obs.push({ i: best, t: tt, dir: dir, lo: l[best], hi: h[best] });
+  }
+  for (t = 0; t < n; t++) {
+    while (ptr < raw.length && raw[ptr].c <= t) {
+      var pv = raw[ptr++];
+      if (pv.t === "H") hiP = { i: pv.i, p: pv.p, used: false }; else loP = { i: pv.i, p: pv.p, used: false };
+    }
+    var up = hiP && !hiP.used && c[t] > hiP.p;
+    var dn = loP && !loP.used && c[t] < loP.p;
+    if (up && dn) { if (c[t] > o[t]) dn = false; else up = false; }
+    if (up) {
+      M.events.push({ t: t, i: hiP.i, p: hiP.p, dir: 1, type: trend === -1 ? "CHOCH" : "BOS" });
+      makeOB(1, hiP.i, t); hiP.used = true; trend = 1;
+    } else if (dn) {
+      M.events.push({ t: t, i: loP.i, p: loP.p, dir: -1, type: trend === 1 ? "CHOCH" : "BOS" });
+      makeOB(-1, loP.i, t); loP.used = true; trend = -1;
+    }
+    M.trendAt[t] = trend;
+  }
+  M.trend = trend;
+  M.obs.forEach(function (ob) {
+    ob.mit = -1; ob.tested = false;
+    for (j = ob.t + 1; j < n; j++) {
+      if (ob.dir > 0) { if (c[j] < ob.lo) { ob.mit = j; break; } if (l[j] <= ob.hi) ob.tested = true; }
+      else { if (c[j] > ob.hi) { ob.mit = j; break; } if (h[j] >= ob.lo) ob.tested = true; }
+    }
+  });
+
+  /* ---- Fair Value Gap ---- */
+  M.fvgs = [];
+  for (i = 2; i <= n - 2; i++) {
+    var a = atrA[i] > 0 ? atrA[i] : atr, g = null;
+    if (l[i] > h[i - 2] && l[i] - h[i - 2] >= 0.15 * a) g = { i: i - 2, dir: 1, lo: h[i - 2], hi: l[i] };
+    else if (h[i] < l[i - 2] && l[i - 2] - h[i] >= 0.15 * a) g = { i: i - 2, dir: -1, lo: h[i], hi: l[i - 2] };
+    if (!g) continue;
+    g.fill = 0; g.end = -1;
+    for (j = i + 1; j < n; j++) {
+      if (g.dir > 0) { var pen = (g.hi - l[j]) / (g.hi - g.lo); if (pen > g.fill) g.fill = pen; if (l[j] <= g.lo) { g.end = j; break; } }
+      else { var pen2 = (h[j] - g.lo) / (g.hi - g.lo); if (pen2 > g.fill) g.fill = pen2; if (h[j] >= g.hi) { g.end = j; break; } }
+    }
+    g.fill = Math.max(0, Math.min(1, g.fill));
+    M.fvgs.push(g);
+  }
+
+  /* ---- Supply & Demand জোন (বেস + ইম্পালস) ---- */
+  M.sd = [];
+  for (i = 3; i <= n - 2; i++) {
+    var ai = atrA[i]; if (!(ai > 0)) continue;
+    var bd = Math.abs(c[i] - o[i]), rg = h[i] - l[i];
+    if (!(bd >= 1.2 * ai && bd >= 0.6 * rg)) continue;
+    var up2 = c[i] > o[i], bi = i - 1, base = { lo: l[bi], hi: h[bi] };
+    if (h[bi] - l[bi] > 0.9 * (atrA[bi] > 0 ? atrA[bi] : ai)) continue;
+    if (up2 && c[i] <= h[bi]) continue;
+    if (!up2 && c[i] >= l[bi]) continue;
+    var b2 = i - 2;
+    if (b2 >= 0 && h[b2] - l[b2] <= 0.9 * (atrA[b2] > 0 ? atrA[b2] : ai) && Math.abs(c[b2] - o[b2]) < 0.6 * (h[b2] - l[b2] + 1e-12)) {
+      base.lo = Math.min(base.lo, l[b2]); base.hi = Math.max(base.hi, h[b2]); bi = b2;
+    }
+    var z = { i: bi, k: i, dir: up2 ? 1 : -1, lo: base.lo, hi: base.hi, end: -1, tested: false };
+    for (j = i + 1; j < n; j++) {
+      if (z.dir > 0) { if (c[j] < z.lo) { z.end = j; break; } if (l[j] <= z.hi) z.tested = true; }
+      else { if (c[j] > z.hi) { z.end = j; break; } if (h[j] >= z.lo) z.tested = true; }
+    }
+    M.sd.push(z);
+  }
+
+  /* ---- Support / Resistance (পিভট ক্লাস্টার) ---- */
+  var pts = [];
+  raw.forEach(function (pv) { pts.push({ p: pv.p, i: pv.i, w: 1 }); });
+  pivotsRaw(P, 10).forEach(function (pv) { pts.push({ p: pv.p, i: pv.i, w: 2 }); });
+  pts.sort(function (x, y) { return x.p - y.p; });
+  var tol = 0.35 * atr, cls = [], cur = null;
+  pts.forEach(function (pt) {
+    if (cur && pt.p - cur.max <= tol) { cur.sw += pt.p * pt.w; cur.w += pt.w; cur.max = pt.p; cur.i0 = Math.min(cur.i0, pt.i); cur.i1 = Math.max(cur.i1, pt.i); cur.cnt++; }
+    else { cur = { sw: pt.p * pt.w, w: pt.w, max: pt.p, i0: pt.i, i1: pt.i, cnt: 1 }; cls.push(cur); }
+  });
+  M.sr = cls.filter(function (k) { return k.w >= 2; }).map(function (k) { return { p: k.sw / k.w, touches: k.w, i0: k.i0, i1: k.i1 }; });
+
+  /* ---- Liquidity Sweep ---- */
+  M.sweeps = [];
+  raw.forEach(function (pv) {
+    for (t = pv.c + 1; t < n; t++) {
+      if (pv.t === "H") {
+        if (c[t] > pv.p) break;
+        if (h[t] > pv.p + 0.05 * atr && c[t] < pv.p) { M.sweeps.push({ t: t, i: pv.i, p: pv.p, dir: -1 }); break; }
+      } else {
+        if (c[t] < pv.p) break;
+        if (l[t] < pv.p - 0.05 * atr && c[t] > pv.p) { M.sweeps.push({ t: t, i: pv.i, p: pv.p, dir: 1 }); break; }
+      }
+    }
+  });
+
+  /* ---- Fibonacci (সর্বশেষ বড় লেগ) ---- */
+  var zz5 = zigzag(pivotsRaw(P, 5)), zz = zigzag(raw);
+  M.zz = zz;
+  M.fib = null;
+  for (q = zz5.length - 1; q >= 1 && q >= zz5.length - 4 && !M.fib; q--) {
+    var pe = zz5[q], ps = zz5[q - 1], endP, endI, up3 = pe.t === "H";
+    if (up3) { endP = -Infinity; for (j = pe.i; j < n; j++) if (h[j] > endP) { endP = h[j]; endI = j; } }
+    else { endP = Infinity; for (j = pe.i; j < n; j++) if (l[j] < endP) { endP = l[j]; endI = j; } }
+    var R = endP - ps.p;
+    if (Math.abs(R) < 2 * atr) continue;
+    var ratio = up3 ? (endP - price) / R : (endP - price) / R;
+    if (ratio > 1.05 || ratio < -0.3) continue;            // লেগ ভেঙে গেছে বা দাম আরও এগিয়ে গেছে
+    M.fib = { dir: up3 ? 1 : -1, i0: ps.i, i1: endI, p0: ps.p, p1: endP, R: R };
+    M.fib.lv = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1].map(function (r) { return { r: r, p: endP - R * r }; });
+    var za = endP - R * 0.5, zb = endP - R * 0.618;
+    M.fib.zone = { lo: Math.min(za, zb), hi: Math.max(za, zb) };
+  }
+
+  /* ---- প্যাটার্ন: Double Top/Bottom, Head & Shoulders ---- */
+  M.pat = [];
+  var m = zz.length;
+  function brokeBelow(x0, lvl) { for (var u = x0 + 1; u < n; u++) if (c[u] < lvl) return u; return -1; }
+  function brokeAbove(x0, lvl) { for (var u = x0 + 1; u < n; u++) if (c[u] > lvl) return u; return -1; }
+  if (m >= 3) {
+    var A = zz[m - 3], B = zz[m - 2], C = zz[m - 1];
+    if (A.t === "H" && Math.abs(A.p - C.p) <= 0.6 * atr && Math.min(A.p, C.p) - B.p >= 1.5 * atr && C.i - A.i >= 5 && n - 1 - C.i <= 60) {
+      var inv = false; for (j = C.i + 1; j < n; j++) if (c[j] > Math.max(A.p, C.p) + 0.3 * atr) inv = true;
+      if (!inv) { var bk = brokeBelow(C.i, B.p); M.pat.push({ type: "DT", name: "Double Top", dir: -1, pts: [A, B, C], neck: B.p, conf: bk >= 0, bk: bk, target: B.p - (Math.max(A.p, C.p) - B.p) }); }
+    }
+    if (A.t === "L" && Math.abs(A.p - C.p) <= 0.6 * atr && B.p - Math.max(A.p, C.p) >= 1.5 * atr && C.i - A.i >= 5 && n - 1 - C.i <= 60) {
+      var inv2 = false; for (j = C.i + 1; j < n; j++) if (c[j] < Math.min(A.p, C.p) - 0.3 * atr) inv2 = true;
+      if (!inv2) { var bk2 = brokeAbove(C.i, B.p); M.pat.push({ type: "DB", name: "Double Bottom", dir: 1, pts: [A, B, C], neck: B.p, conf: bk2 >= 0, bk: bk2, target: B.p + (B.p - Math.min(A.p, C.p)) }); }
+    }
+  }
+  if (m >= 5) {
+    var p1 = zz[m - 5], p2 = zz[m - 4], p3 = zz[m - 3], p4 = zz[m - 2], p5 = zz[m - 1];
+    if (n - 1 - p5.i <= 60) {
+      var slope = (p4.p - p2.p) / Math.max(1, p4.i - p2.i);
+      var neckAt = function (x) { return p2.p + slope * (x - p2.i); };
+      if (p1.t === "H") {
+        var hgt = p3.p - (p2.p + p4.p) / 2;
+        if (p3.p > p1.p + 0.8 * atr && p3.p > p5.p + 0.8 * atr && Math.abs(p1.p - p5.p) <= 0.3 * hgt && p1.p - Math.max(p2.p, p4.p) >= 0.35 * hgt) {
+          var bkh = -1; for (j = p5.i + 1; j < n; j++) if (c[j] < neckAt(j)) { bkh = j; break; }
+          var invh = false; for (j = p5.i + 1; j < n; j++) if (c[j] > p3.p) invh = true;
+          if (!invh) M.pat.push({ type: "HS", name: "Head & Shoulders", dir: -1, pts: [p1, p2, p3, p4, p5], neckA: { i: p2.i, p: p2.p }, neckB: { i: p4.i, p: p4.p }, slope: slope, conf: bkh >= 0, bk: bkh, target: neckAt(n - 1) - hgt });
+        }
+      } else {
+        var hgt2 = (p2.p + p4.p) / 2 - p3.p;
+        if (p3.p < p1.p - 0.8 * atr && p3.p < p5.p - 0.8 * atr && Math.abs(p1.p - p5.p) <= 0.3 * hgt2 && Math.min(p2.p, p4.p) - p1.p >= 0.35 * hgt2) {
+          var bki = -1; for (j = p5.i + 1; j < n; j++) if (c[j] > neckAt(j)) { bki = j; break; }
+          var invi = false; for (j = p5.i + 1; j < n; j++) if (c[j] < p3.p) invi = true;
+          if (!invi) M.pat.push({ type: "IHS", name: "Inverse H&S", dir: 1, pts: [p1, p2, p3, p4, p5], neckA: { i: p2.i, p: p2.p }, neckB: { i: p4.i, p: p4.p }, slope: slope, conf: bki >= 0, bk: bki, target: neckAt(n - 1) + hgt2 });
+        }
+      }
+    }
+  }
+
+  /* ---- দৃশ্যমান/কাজে লাগার মতো তালিকা (দামের কাছাকাছি, অক্ষত) ---- */
+  function near(z) { return zdist(price, z.lo, z.hi); }
+  var rec = n - 160;
+  M.demand = M.sd.filter(function (z) { return z.dir > 0 && z.end < 0 && z.k >= rec; }).sort(function (a2, b2) { return near(a2) - near(b2); }).slice(0, 2);
+  M.supply = M.sd.filter(function (z) { return z.dir < 0 && z.end < 0 && z.k >= rec; }).sort(function (a2, b2) { return near(a2) - near(b2); }).slice(0, 2);
+  M.obBull = M.obs.filter(function (z) { return z.dir > 0 && z.mit < 0 && z.t >= rec; }).sort(function (a2, b2) { return near(a2) - near(b2); }).slice(0, 2);
+  M.obBear = M.obs.filter(function (z) { return z.dir < 0 && z.mit < 0 && z.t >= rec; }).sort(function (a2, b2) { return near(a2) - near(b2); }).slice(0, 2);
+  M.fvgOpen = M.fvgs.filter(function (g) { return g.end < 0 && g.i >= n - 120 && g.fill < 0.99; }).sort(function (a2, b2) { return near(a2) - near(b2); }).slice(0, 4);
+  var sup = M.sr.filter(function (s) { return s.p < price; }).sort(function (a2, b2) { return b2.p - a2.p; }).slice(0, 2);
+  var res = M.sr.filter(function (s) { return s.p > price; }).sort(function (a2, b2) { return a2.p - b2.p; }).slice(0, 2);
+  M.srShow = sup.concat(res);
+  M.sweepsRecent = M.sweeps.filter(function (s) { return s.t >= n - 100; });
+  M.eventsRecent = M.events.filter(function (e) { return e.t >= n - 120; });
+  return M;
+}
+
+/* ================= ট্রেড সেটআপ (Entry / SL / TP1-3 / RR) ================= */
+var RR_T = [2, 3, 4];
+function buildSetups(P, M, ENG) {
+  if (!M || !M.ok) return { buy: null, sell: null, primary: null };
+  var price = P.c[P.n - 1], atr = M.atr, out = {};
+  function cand(side) {
+    var z = [], bull = side === "BUY";
+    function addz(type, lo, hi, label) { z.push({ type: type, lo: lo, hi: hi, label: label }); }
+    (bull ? M.demand : M.supply).forEach(function (s) { addz("SD", s.lo, s.hi, bull ? "Demand জোন" : "Supply জোন"); });
+    (bull ? M.obBull : M.obBear).forEach(function (s) { addz("OB", s.lo, s.hi, bull ? "Bullish Order Block" : "Bearish Order Block"); });
+    M.fvgOpen.filter(function (g) { return bull ? g.dir > 0 : g.dir < 0; }).forEach(function (g) { addz("FVG", g.lo, g.hi, bull ? "Bullish FVG" : "Bearish FVG"); });
+    M.srShow.filter(function (s) { return bull ? s.p < price : s.p > price; }).forEach(function (s) { addz("SR", s.p - 0.15 * atr, s.p + 0.15 * atr, bull ? "Support" : "Resistance"); });
+    if (M.fib && M.fib.dir === (bull ? 1 : -1)) addz("FIB", M.fib.zone.lo, M.fib.zone.hi, "Fib 0.5–0.618");
+    z = z.filter(function (q) {
+      if (bull) return q.hi <= price + 0.3 * atr && price - q.hi <= 5 * atr;
+      return q.lo >= price - 0.3 * atr && q.lo - price <= 5 * atr;
+    });
+    if (!z.length) return null;
+    // কনফ্লুয়েন্স: একই এলাকায় কতগুলো আলাদা ধরনের জোন মিলেছে
+    var best = null;
+    z.forEach(function (q) {
+      var types = {}; types[q.type] = 1;
+      var lo = q.lo, hi = q.hi, labels = [q.label];
+      z.forEach(function (w) {
+        if (w !== q && !types[w.type] && overlap(q, w, 0.2 * atr)) { types[w.type] = 1; lo = Math.max(lo, Math.min(q.lo, w.lo)) ; labels.push(w.label); }
+      });
+      q.score = Object.keys(types).length;
+      q.labels = labels;
+      var d = zdist(price, q.lo, q.hi);
+      q.rank = q.score * 10 - d / atr;
+      if (!best || q.rank > best.rank) best = q;
+    });
+    var zlo = best.lo, zhi = best.hi;
+    var inZone = price >= zlo - 0.2 * atr && price <= zhi + 0.2 * atr;
+    var entry, sl;
+    if (bull) { entry = inZone ? price : zhi; sl = zlo - 0.3 * atr; }
+    else { entry = inZone ? price : zlo; sl = zhi + 0.3 * atr; }
+    var risk = Math.abs(entry - sl);
+    if (risk < 0.4 * atr) { sl = bull ? entry - 0.4 * atr : entry + 0.4 * atr; risk = 0.4 * atr; }
+    if (risk > 4 * atr) return null;
+    var tps = RR_T.map(function (r) { return bull ? entry + r * risk : entry - r * risk; });
+    // নিকটতম বাধা (রেজিস্ট্যান্স/সাপ্লাই) যা TP1-এর আগে পড়ে
+    var obst = null;
+    var lv = [];
+    M.srShow.forEach(function (s) { lv.push({ p: s.p, n: bull ? "Resistance" : "Support" }); });
+    (bull ? M.supply : M.demand).forEach(function (s) { lv.push({ p: bull ? s.lo : s.hi, n: bull ? "Supply জোন" : "Demand জোন" }); });
+    lv.forEach(function (q) {
+      if (bull && q.p > entry && q.p < tps[0] && (!obst || q.p < obst.p)) obst = q;
+      if (!bull && q.p < entry && q.p > tps[0] && (!obst || q.p > obst.p)) obst = q;
+    });
+    var aligned = bull ? M.trend >= 0 : M.trend <= 0;
+    var htf = ENG && ENG.ok ? (bull ? ENG.dir0 === "up" : ENG.dir0 === "down") : false;
+    var sc = 20 + best.score * 15 + (aligned ? 20 : 0) + (htf ? 10 : 0) + (inZone ? 10 : 0) - (obst ? 10 : 0);
+    return {
+      side: side, bull: bull, entry: entry, sl: sl, risk: risk, tp: tps, rr: RR_T.slice(),
+      zone: { lo: zlo, hi: zhi }, labels: best.labels, conf: best.score, inZone: inZone,
+      status: inZone ? "সক্রিয়: দাম জোনের ভেতরে" : "অপেক্ষায়: দাম জোনে এলে",
+      aligned: aligned, predAligned: htf, obst: obst, score: Math.max(0, Math.min(100, sc)),
+      riskPct: risk / entry * 100
+    };
+  }
+  out.buy = cand("BUY"); out.sell = cand("SELL");
+  var cands = [out.buy, out.sell].filter(Boolean).sort(function (a, b) { return b.score - a.score; });
+  out.primary = cands[0] || null;
+  return out;
+}
+
+
+/* ================= AI ইঞ্জিন ৩: পরের ক্যান্ডেল পূর্বাভাস ================= */
+var WARM = 210, SHRINK = 10;
+function wfEval(P, IND, trendAt) {
+  var n = P.n, u = [], nn = [], b, i;
+  for (b = 0; b < NBK; b++) { u.push(0); nn.push(0); }
+  var R = { n: 0, hit: 0, cn: 0, chit: 0, up: 0, prevHit: 0, prevN: 0, cats: null };
+  var comps = new Array(n);
+  for (i = WARM; i <= n - 3; i++) {
+    var cp = compAt(IND, i, trendAt);
+    comps[i] = cp;
+    b = bucketS(cp.S);
+    var p = (u[b] + SHRINK / 2) / (nn[b] + SHRINK);
+    var y = P.c[i + 1] > P.o[i + 1] ? 1 : P.c[i + 1] < P.o[i + 1] ? 0 : -1;
+    if (y < 0) continue;
+    R.n++; R.up += y;
+    if ((p >= 0.5 ? 1 : 0) === y) R.hit++;
+    if (nn[b] >= 30 && Math.abs(p - 0.5) >= 0.03) { R.cn++; if ((p >= 0.5 ? 1 : 0) === y) R.chit++; }
+    var py = P.c[i] > P.o[i] ? 1 : P.c[i] < P.o[i] ? 0 : -1;
+    if (py >= 0) { R.prevN++; if (py === y) R.prevHit++; }
+    u[b] += y; nn[b]++;
+  }
+  R.u = u; R.nn = nn;
+  return R;
+}
+
+function strengthOf(edge, n, agree) {
+  if (n < 30 || edge < 0.03) return { k: "weak", l: "Weak (দুর্বল)" };
+  if (edge >= 0.06 && agree >= 0.6) return { k: "strong", l: "Strong (শক্তিশালী)" };
+  return { k: "medium", l: "Medium (মাঝারি)" };
+}
+
+function predictEngine(P, IND, M, key, nowMs) {
+  var n = P.n, E = { ok: false };
+  var tfms = TFMS[key], now = nowMs || Date.now();
+  if (n < WARM + 40 || !M || !M.ok) { E.why = "ডেটা কম"; return E; }
+  var lastT = P.t[n - 1];
+  var forming = now < lastT + tfms;                 // শেষ ক্যান্ডেল এখনো চলমান?
+  var fi = forming ? n - 1 : n;                     // যে ক্যান্ডেলের পূর্বাভাস
+  var i = fi - 1;                                   // ফিচারের ক্যান্ডেল (সর্বশেষ বন্ধ)
+  var wf = wfEval(P, IND, M.trendAt);
+  var cp = compAt(IND, i, M.trendAt), b = bucketS(cp.S);
+  var p0 = (wf.u[b] + SHRINK / 2) / (wf.nn[b] + SHRINK);
+  var dir0 = p0 >= 0.5 ? "up" : "down", edge = Math.abs(p0 - 0.5);
+
+  var cats = CATS.map(function (ct) { return { k: ct.k, name: ct.name, w: ct.w, s: cp.cats[ct.k] }; });
+  cats.push({ k: "S", name: "মার্কেট স্ট্রাকচার (BOS/CHOCH)", w: W_STRUCT, s: cp.cats.S });
+  var agreeN = 0, totN = 0;
+  cats.forEach(function (ct) { if (Math.abs(ct.s) > 0.05) { totN++; if ((ct.s > 0) === (dir0 === "up")) agreeN++; } });
+  var agree = totN ? agreeN / totN : 0;
+  var st = strengthOf(edge, wf.nn[b], agree);
+
+  // এক ক্যান্ডেলের রিটার্নের স্ট্যান্ডার্ড ডেভিয়েশন (সর্বশেষ ২০০ বন্ধ ক্যান্ডেল)
+  var s = 0, q, cntq = 0, mean = 0, vals = [];
+  for (q = Math.max(0, i - 199); q <= i; q++) { vals.push(P.c[q] / P.o[q] - 1); }
+  vals.forEach(function (x) { mean += x; }); mean /= vals.length;
+  vals.forEach(function (x) { s += (x - mean) * (x - mean); });
+  var sigma = Math.sqrt(s / Math.max(1, vals.length - 1));
+  if (!(sigma > 0)) sigma = 0.001;
+
+  // কারণ তালিকা
+  var why = [];
+  var sorted = cats.slice().sort(function (a, c2) { return Math.abs(c2.s * c2.w) - Math.abs(a.s * a.w); });
+  sorted.slice(0, 3).forEach(function (ct) {
+    if (Math.abs(ct.s) < 0.05) return;
+    why.push({ tone: ct.s > 0 ? 1 : -1, t: ct.name + ": " + (ct.s > 0 ? "বুলিশ" : "বেয়ারিশ") + " ঝোঁক (" + (ct.s > 0 ? "+" : "") + Math.round(ct.s * 100) + "%)" });
+  });
+  var rsiV = P.rsi[i];
+  if (isFinite(rsiV) && (rsiV < 30 || rsiV > 70)) why.push({ tone: rsiV < 30 ? 1 : -1, t: "RSI " + rsiV.toFixed(0) + (rsiV < 30 ? " (oversold, ওঠার চাপ)" : " (overbought, নামার চাপ)") });
+  why.push({ tone: M.trend, t: "মার্কেট স্ট্রাকচার: " + (M.trend > 0 ? "আপট্রেন্ড (BOS/CHOCH ঊর্ধ্বমুখী)" : M.trend < 0 ? "ডাউনট্রেন্ড (BOS/CHOCH নিম্নমুখী)" : "স্পষ্ট ট্রেন্ড নেই") });
+  var ev = M.eventsRecent && M.eventsRecent[M.eventsRecent.length - 1];
+  if (ev) why.push({ tone: ev.dir, t: "সর্বশেষ " + ev.type + (ev.dir > 0 ? " ↑" : " ↓") + " (" + (n - 1 - ev.t) + " ক্যান্ডেল আগে)" });
+  var px = P.c[n - 1];
+  M.demand.concat(M.obBull).forEach(function (z) { if (px >= z.lo - 0.2 * M.atr && px <= z.hi + 0.2 * M.atr) why.push({ tone: 1, t: "দাম বুলিশ জোনের (Demand/OB) ভেতরে" }); });
+  M.supply.concat(M.obBear).forEach(function (z) { if (px >= z.lo - 0.2 * M.atr && px <= z.hi + 0.2 * M.atr) why.push({ tone: -1, t: "দাম বেয়ারিশ জোনের (Supply/OB) ভেতরে" }); });
+  var sw = M.sweepsRecent && M.sweepsRecent[M.sweepsRecent.length - 1];
+  if (sw && n - 1 - sw.t <= 6) why.push({ tone: sw.dir, t: "সাম্প্রতিক লিকুইডিটি সুইপ (" + (sw.dir > 0 ? "নিচের স্টপ ধরে ফিরেছে" : "উপরের স্টপ ধরে ফিরেছে") + ")" });
+  M.pat.forEach(function (pt) { why.push({ tone: pt.dir, t: pt.name + (pt.conf ? " (কনফার্মড)" : " (গঠনের পথে)") }); });
+  why.push({ tone: 0, t: "ইতিহাসে ঠিক এমন অবস্থায় (" + wf.nn[b] + " বার) পরের ক্যান্ডেল UP ছিল " + Math.round((wf.u[b] / Math.max(1, wf.nn[b])) * 100) + "%" });
+  var tally = { bull: cp.bull, bear: cp.bear, neu: cp.neu };
+
+  var target = forming ? lastT : lastT + tfms;
+  Object.assign(E, {
+    ok: true, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, edge: edge,
+    str: st.k, strL: st.l, agree: agree, sigma: sigma, wf: wf, why: why, tally: tally,
+    target: target, close: target + tfms, tfms: tfms, openPx: forming ? P.o[n - 1] : null
+  });
+  return E;
+}
+
+/* ক্যান্ডেল চলাকালীন লাইভ সম্ভাবনা: বর্তমান চলন + বাকি সময়ে প্রাথমিক ঝোঁক (ব্রাউনিয়ান আনুমানিক মডেল) */
+function engLive(E, livePx, nowMs) {
+  var now = nowMs || Date.now(), f = Math.max(0, Math.min(0.999, (now - E.target) / E.tfms));
+  var open = E.openPx > 0 ? E.openPx : livePx;
+  var rNow = livePx / open - 1;
+  var mu0 = E.sigma * normInv(Math.min(0.999, Math.max(0.001, E.p0)));
+  var rem = Math.max(1 - f, 1e-4), sd = E.sigma * Math.sqrt(rem);
+  var z = (rNow + mu0 * (1 - f)) / sd;
+  var p = Math.min(0.999, Math.max(0.001, normCdf(z)));
+  var center = livePx * (1 + mu0 * (1 - f)), sp = livePx * sd;
+  return {
+    f: f, rNow: rNow, p: p, dir: p >= 0.5 ? "up" : "down", open: open,
+    r68: [center - sp, center + sp], r95: [center - 1.96 * sp, center + 1.96 * sp],
+    remain: Math.max(0, Math.round((E.close - now) / 1000))
+  };
+}
+
+/* ================= ভার্সন সংরক্ষণ ও যাচাই ================= */
+var PRED_KEY = "pred3", WF_KEY = "wf3";
+function readPred() {
+  try { var a = JSON.parse(load(PRED_KEY, "[]")); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+function writePred(a) { save(PRED_KEY, JSON.stringify(a.slice(-600))); }
+function readWF() {
+  try { var o = JSON.parse(load(WF_KEY, "{}")); return o && typeof o === "object" ? o : {}; } catch (e) { return {}; }
+}
+function gradePred(arr, L, now) {
+  var tfms = TFMS[L.key], cd = L.cd, n = cd.length, changed = false;
+  arr.forEach(function (r) {
+    if (r.st !== "open" || r.sym !== L.base || r.tf !== L.key) return;
+    if (now < r.close + 5000) return;                   // ক্যান্ডেল এখনো বন্ধ হয়নি
+    var c = null, j;
+    for (j = n - 1; j >= 0; j--) {
+      if (cd[j].t === r.target) { c = cd[j]; break; }
+      if (cd[j].t < r.target) break;
+    }
+    if (c && c.t + tfms <= now) {
+      r.o = c.o; r.c = c.c;
+      r.act = c.c > c.o ? "up" : c.c < c.o ? "down" : "flat";
+      r.st = "done"; changed = true;
+    } else if (!c && now > r.close + 3 * tfms) { r.st = "expired"; changed = true; }
+  });
+  return changed;
+}
+function trackPred(L, nowMs) {
+  var E = L.ENG, now = nowMs || Date.now();
+  var arr = readPred(), changed = gradePred(arr, L, now);
+  if (E && E.ok && E.live) {
+    var key = L.base + "|" + L.key + "|" + E.target, rec = null, q;
+    for (q = 0; q < arr.length; q++) if (arr[q].k === key) rec = arr[q];
+    var lv = E.live;
+    if (!rec) {
+      rec = {
+        k: key, sym: L.base, tf: L.key, target: E.target, close: E.close, seen: now, seenF: lv.f, early: lv.f <= 0.25,
+        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN }, v: [], st: "open"
+      };
+      arr.push(rec); changed = true;
+    }
+    if (rec.st === "open") {
+      var lastV = rec.v[rec.v.length - 1];
+      var save1 = !lastV || lastV.dir !== lv.dir || Math.abs(lastV.p - lv.p) >= 0.08 || lv.f - lastV.f >= 0.25;
+      if (save1) {
+        rec.v.push({ ts: now, f: Math.round(lv.f * 1000) / 1000, p: Math.round(lv.p * 1000) / 1000, dir: lv.dir, px: L.S.live, r68: [lv.r68[0], lv.r68[1]] });
+        if (rec.v.length > 12) rec.v.splice(1, 1);
+        changed = true;
+      }
+    }
+  }
+  if (changed) writePred(arr);
+  if (E && E.ok) {
+    var w = readWF(); w[L.base + "|" + L.key] = { n: E.wf.n, hit: E.wf.hit, cn: E.wf.cn, chit: E.wf.chit, at: now };
+    save(WF_KEY, JSON.stringify(w));
+  }
+  return arr;
+}
+function accStats(arr, f) {
+  var o = { n: 0, pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0 };
+  arr.forEach(function (r) {
+    if (f && !f(r)) return;
+    if (r.st === "open") { o.open++; return; }
+    if (r.st !== "done" || r.act === "flat") return;
+    var hit = r.pre.dir === r.act ? 1 : 0;
+    o.n++; o.pre[0]++; o.pre[1] += hit;
+    if (r.early) { o.early[0]++; o.early[1] += hit; }
+    var bk = o.by[r.pre.str]; if (bk) { bk[0]++; bk[1] += hit; }
+    var lastV = r.v[r.v.length - 1];
+    if (lastV) { o.fin[0]++; if (lastV.dir === r.act) o.fin[1]++; }
+  });
+  return o;
+}
+
+
+/* ================= AI ইঞ্জিন ৪: চার্ট ম্যাপ ও কার্ড ================= */
+var AI = { nVis: 80, off: 0, trade: "auto", layers: { sr: 1, sd: 1, ob: 1, fvg: 1, fib: 1, str: 1, pat: 1, sw: 1 }, hover: -1 };
+var AI_LAYERS = [["sr", "S/R"], ["sd", "Supply/Demand"], ["ob", "Order Block"], ["fvg", "FVG"], ["fib", "Fibonacci"], ["str", "HH/HL/BOS/CHOCH"], ["pat", "প্যাটার্ন"], ["sw", "Liquidity Sweep"]];
+var AI_TRADE = [["auto", "ট্রেড: অটো"], ["buy", "ট্রেড: BUY"], ["sell", "ট্রেড: SELL"], ["off", "ট্রেড: বন্ধ"]];
+(function () {
+  try {
+    var o = JSON.parse(load("aiv", "{}"));
+    if (o.nVis >= 30 && o.nVis <= 220) AI.nVis = o.nVis;
+    if (o.layers) for (var k in AI.layers) if (k in o.layers) AI.layers[k] = o.layers[k] ? 1 : 0;
+    if (o.trade) AI.trade = o.trade;
+  } catch (e) {}
+})();
+function aiSave() { save("aiv", JSON.stringify({ nVis: AI.nVis, layers: AI.layers, trade: AI.trade })); }
+
+function aiTrade(L) {
+  var SU = L.SU; if (!SU) return null;
+  return AI.trade === "buy" ? SU.buy : AI.trade === "sell" ? SU.sell : AI.trade === "auto" ? SU.primary : null;
+}
+function rr(r) { return "1:" + r; }
+
+/* ---------- চার্ট ---------- */
+function drawMap() {
+  var L = last, cv = $("mapChart");
+  if (!L || !L.M || !L.M.ok) return;
+  var P = L.P, M = L.M, E = L.ENG, T = aiTrade(L), n = P.n;
+  var css = getComputedStyle(document.documentElement);
+  var col = function (k) { return css.getPropertyValue(k).trim(); };
+  var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  var g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  var cBuy = col("--buy"), cSell = col("--sell"), cFg = col("--fg"), cMut = col("--muted"), cLine = col("--line"),
+    cPred = col("--pred"), cHold = col("--hold"), cSurf = col("--surface"), cAcc = col("--accent");
+
+  var nv = Math.min(AI.nVis, n), off = Math.max(0, Math.min(AI.off, n - nv)); AI.off = off;
+  var fut = off === 0 ? 12 : 0, e = n - off, s = e - nv;
+  var padR = 60, padT = 18, padB = 20, plotW = w - padR, plotH = h - padT - padB;
+  var cw = plotW / (nv + fut);
+  var X = function (i) { return (i - s + 0.5) * cw; };
+  var i, lo = Infinity, hi = -Infinity;
+  for (i = s; i < e; i++) { if (P.l[i] < lo) lo = P.l[i]; if (P.h[i] > hi) hi = P.h[i]; }
+  if (T && off === 0) { [T.sl, T.entry, T.tp[1]].forEach(function (v) { if (v < lo) lo = v; if (v > hi) hi = v; }); }
+  var pad = (hi - lo) * 0.06 || hi * 0.001; lo -= pad; hi += pad;
+  var Y = function (p) { return padT + (hi - p) / (hi - lo) * plotH; };
+  AI.geo = { s: s, e: e, cw: cw, X0: 0 };
+
+  function fr(x0, y0, x1, y1, c, a) { g.globalAlpha = a; g.fillStyle = c; g.fillRect(x0, Math.min(y0, y1), x1 - x0, Math.abs(y1 - y0) || 1); g.globalAlpha = 1; }
+  function hline(p, x0, x1, c, dash, lw) {
+    g.strokeStyle = c; g.lineWidth = lw || 1; g.setLineDash(dash || []); g.beginPath(); g.moveTo(x0, Y(p)); g.lineTo(x1, Y(p)); g.stroke(); g.setLineDash([]);
+  }
+  g.font = "600 10px -apple-system, system-ui, sans-serif"; g.textBaseline = "middle";
+  function pill(txt, x, y, bg, fg, align) {
+    var tw = g.measureText(txt).width + 8, x0 = align === "r" ? x - tw : align === "c" ? x - tw / 2 : x;
+    x0 = Math.max(1, Math.min(w - tw - 1, x0)); y = Math.max(padT + 6, Math.min(padT + plotH - 6, y));
+    g.fillStyle = bg; g.beginPath();
+    if (g.roundRect) g.roundRect(x0, y - 8, tw, 16, 4); else g.rect(x0, y - 8, tw, 16);
+    g.fill(); g.fillStyle = fg; g.textAlign = "left"; g.fillText(txt, x0 + 4, y + 0.5);
+  }
+  function axisTag(p, bg, fg) { pill(fmt(p), w - 1, Y(p), bg, fg, "r"); }
+
+  // গ্রিড ও দামের স্কেল
+  var tk = niceTicks(lo, hi, 5);
+  g.textAlign = "left"; g.fillStyle = cMut;
+  tk.forEach(function (v) {
+    if (v < lo || v > hi) return;
+    hline(v, 0, plotW, cLine, [2, 4], 1); g.fillStyle = cMut; g.textAlign = "left"; g.fillText(fmt(v), plotW + 4, Y(v));
+  });
+  g.save(); g.beginPath(); g.rect(0, padT, plotW + 1, plotH); g.clip();
+
+  // জোন: Supply/Demand, Order Block, FVG
+  function zone(z, c, a, label, iFrom) {
+    var x0 = X(Math.max(iFrom, s)) - cw / 2, y0 = Y(z.hi), y1 = Y(z.lo);
+    fr(x0, y0, plotW, y1, c, a);
+    g.strokeStyle = c; g.globalAlpha = 0.55; g.lineWidth = 1; g.strokeRect(x0, Math.min(y0, y1), plotW - x0, Math.abs(y1 - y0)); g.globalAlpha = 1;
+    g.fillStyle = c; g.textAlign = "left"; g.fillText(label, Math.max(x0 + 3, 3), Math.min(y0, y1) + 8);
+  }
+  if (AI.layers.sd) { M.demand.forEach(function (z) { zone(z, cBuy, 0.16, "Demand", z.i); }); M.supply.forEach(function (z) { zone(z, cSell, 0.16, "Supply", z.i); }); }
+  if (AI.layers.ob) { M.obBull.forEach(function (z) { zone(z, cAcc, 0.18, "Bull OB", z.i); }); M.obBear.forEach(function (z) { zone(z, cHold, 0.2, "Bear OB", z.i); }); }
+  if (AI.layers.fvg) M.fvgOpen.forEach(function (z) { zone(z, cPred, 0.13, "FVG", z.i); });
+
+  // Fibonacci
+  if (AI.layers.fib && M.fib) {
+    var F = M.fib, fx0 = X(Math.max(F.i0, s));
+    var g1 = F.lv[3], g2 = F.lv[4];
+    fr(fx0, Y(g1.p), plotW, Y(g2.p), cHold, 0.12);
+    g.strokeStyle = cMut; g.globalAlpha = 0.6; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(F.i0), Y(F.p0)); g.lineTo(X(F.i1), Y(F.p1)); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    F.lv.forEach(function (v) {
+      var key = v.r === 0.382 || v.r === 0.5 || v.r === 0.618 || v.r === 0.786;
+      g.globalAlpha = key ? 0.9 : 0.35; hline(v.p, fx0, plotW, cHold, [5, 3], 1); g.globalAlpha = 1;
+      if (key) { g.fillStyle = cHold; g.textAlign = "left"; g.fillText(v.r + " (" + fmt(v.p) + ")", Math.max(fx0 + 3, 3), Y(v.p) - 6); }
+    });
+  }
+  // Support / Resistance
+  if (AI.layers.sr) M.srShow.forEach(function (z) {
+    var sup = z.p < P.c[n - 1], c = sup ? cBuy : cSell;
+    hline(z.p, X(Math.max(z.i0, s)), plotW, c, [], 1.2);
+    g.fillStyle = c; g.textAlign = "left"; g.fillText(sup ? "S" : "R", Math.max(X(Math.max(z.i0, s)) + 2, 3), Y(z.p) - 6);
+  });
+
+  // ক্যান্ডেল
+  var bw = Math.max(1, Math.min(cw * 0.7, 14));
+  for (i = s; i < e; i++) {
+    var up = P.c[i] >= P.o[i], c = up ? cBuy : cSell, x = X(i);
+    g.strokeStyle = c; g.fillStyle = c; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, Y(P.h[i])); g.lineTo(x, Y(P.l[i])); g.stroke();
+    var yo = Y(P.o[i]), yc = Y(P.c[i]); g.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yo - yc)));
+  }
+
+  // মার্কেট স্ট্রাকচার লেবেল ও BOS/CHOCH
+  if (AI.layers.str) {
+    g.textAlign = "center";
+    M.labels.forEach(function (lb) {
+      if (lb.i < s || lb.i >= e) return;
+      var isH = lb.t === "HH" || lb.t === "LH", good = lb.t === "HH" || lb.t === "HL";
+      g.fillStyle = good ? cBuy : cSell; g.fillText(lb.t, X(lb.i), Y(lb.p) + (isH ? -9 : 9));
+    });
+    M.eventsRecent.forEach(function (ev) {
+      if (ev.t < s || ev.i >= e || ev.t >= e) return;
+      var c = ev.type === "CHOCH" ? cHold : cPred, x0 = X(Math.max(ev.i, s)), x1 = X(ev.t);
+      hline(ev.p, x0, x1, c, [4, 3], 1.2);
+      pill(ev.type, (x0 + x1) / 2, Y(ev.p) + (ev.dir > 0 ? -9 : 9), c, "#fff", "c");
+    });
+  }
+  // লিকুইডিটি সুইপ
+  if (AI.layers.sw) M.sweepsRecent.forEach(function (sw) {
+    if (sw.t < s || sw.t >= e) return;
+    hline(sw.p, X(Math.max(sw.i, s)), X(sw.t), cMut, [2, 3], 1);
+    g.fillStyle = sw.dir > 0 ? cBuy : cSell; g.textAlign = "center";
+    g.fillText("◆ Sweep", X(sw.t), Y(sw.p) + (sw.dir > 0 ? 12 : -12));
+  });
+  // প্যাটার্ন
+  if (AI.layers.pat) M.pat.forEach(function (pt) {
+    var c = pt.dir > 0 ? cBuy : cSell;
+    g.strokeStyle = c; g.lineWidth = 1.6; g.setLineDash([]); g.beginPath();
+    pt.pts.forEach(function (q, j) { var xx = X(q.i), yy = Y(q.p); if (j) g.lineTo(xx, yy); else g.moveTo(xx, yy); });
+    g.stroke();
+    pt.pts.forEach(function (q) { g.fillStyle = c; g.beginPath(); g.arc(X(q.i), Y(q.p), 2.6, 0, 6.3); g.fill(); });
+    var last0 = pt.pts[pt.pts.length - 1];
+    if (pt.neck !== undefined) hline(pt.neck, X(pt.pts[0].i), plotW, c, [6, 3], 1.2);
+    else if (pt.neckA) {
+      var sl = (pt.neckB.p - pt.neckA.p) / (pt.neckB.i - pt.neckA.i), ex = n + 6;
+      g.strokeStyle = c; g.setLineDash([6, 3]); g.beginPath(); g.moveTo(X(pt.neckA.i), Y(pt.neckA.p)); g.lineTo(X(ex), Y(pt.neckA.p + sl * (ex - pt.neckA.i))); g.stroke(); g.setLineDash([]);
+    }
+    if (isFinite(pt.target)) { hline(pt.target, X(last0.i), plotW, c, [2, 4], 1); g.fillStyle = c; g.textAlign = "left"; g.fillText("Target " + fmt(pt.target), Math.max(X(last0.i) + 4, 3), Y(pt.target) - 7); }
+    pill(pt.name + (pt.conf ? " ✓" : ""), X(pt.pts[Math.floor(pt.pts.length / 2)].i), Y(pt.pts[Math.floor(pt.pts.length / 2)].p) + (pt.dir > 0 ? 18 : -18), c, "#fff", "c");
+  });
+
+  // ট্রেড সেটআপ (Entry / SL / TP) — সবুজ লাভের জোন, লাল SL জোন
+  if (T && off === 0) {
+    var x0t = X(n - 1) - cw / 2, ent = T.entry, tpL = T.tp[T.tp.length - 1];
+    if (!T.inZone) fr(x0t, Y(T.zone.hi), plotW, Y(T.zone.lo), cPred, 0.12);
+    fr(x0t, Y(ent), plotW, Y(tpL), cBuy, 0.17);
+    fr(x0t, Y(ent), plotW, Y(T.sl), cSell, 0.17);
+    hline(ent, x0t, plotW, cFg, [], 1.4);
+    hline(T.sl, x0t, plotW, cSell, [5, 3], 1.4);
+    T.tp.forEach(function (p) { hline(p, x0t, plotW, cBuy, [5, 3], 1.2); });
+  }
+  g.restore();
+
+  // ট্রেডের লেবেল (অক্ষের পাশে)
+  if (T && off === 0) {
+    var rx = plotW - 3, tl = [{ t: "ENTRY (" + T.side + ") " + fmt(T.entry), y: Y(T.entry), bg: cFg, fg: cSurf }, { t: "STOP LOSS " + fmt(T.sl), y: Y(T.sl), bg: cSell, fg: "#fff" }];
+    T.tp.forEach(function (p, j) { tl.push({ t: "TARGET " + (j + 1) + " · " + rr(T.rr[j]) + "  " + fmt(p), y: Y(p), bg: cBuy, fg: "#fff" }); });
+    tl.sort(function (a, b) { return a.y - b.y; });
+    var q2, minY = padT + 8, maxY = padT + plotH - 8;
+    for (q2 = 0; q2 < tl.length; q2++) { tl[q2].y = Math.max(tl[q2].y, q2 ? tl[q2 - 1].y + 17 : minY); }
+    for (q2 = tl.length - 1; q2 >= 0; q2--) { var lim = q2 === tl.length - 1 ? maxY : tl[q2 + 1].y - 17; if (tl[q2].y > lim) tl[q2].y = lim; }
+    tl.forEach(function (x) { pill(x.t, rx, x.y, x.bg, x.fg, "r"); });
+  }
+  // সর্বশেষ দাম
+  var lp = P.c[n - 1]; if (off === 0) axisTag(lp, P.c[n - 1] >= P.o[n - 1] ? cBuy : cSell, "#fff");
+
+  // পরের ক্যান্ডেলের নীল পূর্বাভাস চিহ্ন
+  AI.pmark = null;
+  if (E && E.ok && E.live && off === 0) {
+    var ti = E.forming ? n - 1 : n, lv = E.live, upP = lv.dir === "up", pp = upP ? lv.p : 1 - lv.p, tx = X(ti);
+    var anchor = E.forming ? P.h[n - 1] : P.c[n - 1], ty = Y(anchor) - 14;
+    g.save(); g.beginPath(); g.rect(0, 0, plotW + 1, h); g.clip();
+    g.strokeStyle = cPred; g.lineWidth = 1.5; g.setLineDash([3, 2]);
+    g.strokeRect(tx - Math.max(cw, 8) / 2 - 1, Y(E.forming ? P.h[n - 1] : P.c[n - 1] * 1.002) - 2, Math.max(cw, 8) + 2, Math.max(14, E.forming ? Y(P.l[n - 1]) - Y(P.h[n - 1]) + 4 : 14)); g.setLineDash([]);
+    g.fillStyle = cPred; g.beginPath();
+    if (upP) { g.moveTo(tx, ty - 8); g.lineTo(tx - 6, ty + 2); g.lineTo(tx + 6, ty + 2); } else { g.moveTo(tx, ty + 2); g.lineTo(tx - 6, ty - 8); g.lineTo(tx + 6, ty - 8); }
+    g.fill();
+    var rl = Y(lv.r68[0]), rh = Y(lv.r68[1]), rxx = Math.min(plotW - 4, tx + Math.max(cw, 8) + 4);
+    g.strokeStyle = cPred; g.lineWidth = 2; g.beginPath(); g.moveTo(rxx, rh); g.lineTo(rxx, rl); g.stroke();
+    g.beginPath(); g.moveTo(rxx - 3, rh); g.lineTo(rxx + 3, rh); g.moveTo(rxx - 3, rl); g.lineTo(rxx + 3, rl); g.stroke();
+    g.restore();
+    pill("NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "%", tx - 10, Math.max(padT + 8, ty - 2), cPred, "#fff", "r");
+  }
+  // হোভার
+  if (AI.hover >= s && AI.hover < e) {
+    var hx = X(AI.hover); g.strokeStyle = cMut; g.lineWidth = 1; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(hx, padT); g.lineTo(hx, padT + plotH); g.stroke(); g.setLineDash([]);
+  }
+  // সময়ের স্কেল
+  g.fillStyle = cMut; g.textAlign = "center";
+  var step = Math.max(1, Math.round(nv / 5));
+  for (i = s + 2; i < e; i += step) g.fillText(fmtT(P.t[i], L.key), X(i), h - 8);
+}
+function mapReadout() {
+  var L = last, box = $("mapReadout"); if (!L) return;
+  var P = L.P, k = AI.hover;
+  if (!AI.geo || k < 0 || k >= P.n) { box.textContent = "চার্টে আঙুল রাখুন: ক্যান্ডেলের তথ্য। বাঁ-ডানে টানলে পুরোনো ক্যান্ডেল দেখা যাবে। জুম বোতাম দিয়ে ক্যান্ডেল কমবেশি করুন।"; return; }
+  var c = L.cd[k], ch = c.o ? c.c / c.o - 1 : 0;
+  box.textContent = fmtFull(P.t[k]) + " | O " + fmt(c.o) + " H " + fmt(c.h) + " L " + fmt(c.l) + " C " + fmt(c.c) + " (" + (ch >= 0 ? "+" : "") + pct(ch, 2) + ")";
+}
+function redrawMap() { drawMap(); mapReadout(); }
+
+/* ---------- কার্ড ---------- */
+function kvRow(dl, k, v, cls) {
+  dl.appendChild(el("dt", "", k)); var d = el("dd", cls || "", v); dl.appendChild(d); return d;
+}
+function clearEl(x) { while (x.firstChild) x.removeChild(x.firstChild); }
+function tmStr(t) { var d = new Date(t); return two(d.getHours()) + ":" + two(d.getMinutes()) + ":" + two(d.getSeconds()); }
+function dirTxt(d) { return d === "up" ? "UP 🟢" : "DOWN 🔴"; }
+
+function renderPred() {
+  var L = last, E = L.ENG, box = $("pdBody"); clearEl(box);
+  if (!E || !E.ok) { box.appendChild(el("p", "small", "পূর্বাভাসের জন্য যথেষ্ট ক্যান্ডেল নেই (কমপক্ষে ~২৫০টা লাগে)।")); return; }
+  var lv = E.live, up = lv.dir === "up", pu = lv.p, pd = 1 - lv.p, pp = up ? pu : pd;
+  var top = el("div", "predbox");
+  top.appendChild(el("div", "arrow " + (up ? "up" : "dn"), up ? "▲" : "▼"));
+  var tb = el("div", ""); tb.appendChild(el("div", "big " + (up ? "up" : "dn"), "NEXT CANDLE: " + dirTxt(lv.dir)));
+  tb.appendChild(el("div", "small", E.forming ? "চলমান " + TFS[L.key].label + " ক্যান্ডেল কোন রঙে বন্ধ হবে (এখনো চলছে)" : "পরের " + TFS[L.key].label + " ক্যান্ডেল"));
+  top.appendChild(tb); box.appendChild(top);
+  var bar = el("div", "pbar"), a = el("i", "up"), b = el("i", "dn");
+  a.style.width = (pu * 100).toFixed(1) + "%"; b.style.width = (pd * 100).toFixed(1) + "%";
+  a.textContent = (pu >= 0.25 ? "UP " : "") + Math.round(pu * 100) + "%"; b.textContent = (pd >= 0.25 ? "DOWN " : "") + Math.round(pd * 100) + "%";
+  bar.appendChild(a); bar.appendChild(b); box.appendChild(bar);
+  var dl = el("dl", "kv");
+  kvRow(dl, "Signal strength", E.strL, "str " + E.str);
+  kvRow(dl, "প্রত্যাশিত দামের পরিসর (≈৬৮%)", fmt(lv.r68[0]) + " – " + fmt(lv.r68[1]));
+  kvRow(dl, "বিস্তৃত পরিসর (≈৯৫%)", fmt(lv.r95[0]) + " – " + fmt(lv.r95[1]));
+  kvRow(dl, "ক্যান্ডেল বন্ধ হবে", tmStr(E.close) + " (বাকি " + fmtDur(lv.remain) + ")");
+  kvRow(dl, "শুরুর আগের পূর্বাভাস", dirTxt(E.dir0) + " " + Math.round((E.dir0 === "up" ? E.p0 : 1 - E.p0) * 100) + "%");
+  kvRow(dl, "ক্যান্ডেল এতটুকু এগিয়েছে", Math.round(lv.f * 100) + "%");
+  kvRow(dl, "ইতিহাসে একই অবস্থা", E.nbN + " বার");
+  box.appendChild(dl);
+  if (lv.f > 0.5) box.appendChild(el("p", "warn", "ক্যান্ডেলের অর্ধেকের বেশি পার হয়ে গেছে, তাই এখনকার সংখ্যা চলমান দামের দিকে ঝুঁকে আছে। সঠিকতার হিসাব শুধু ক্যান্ডেল শুরুর আগের পূর্বাভাস দিয়ে করা হয়।"));
+  box.appendChild(el("h3", "", "কেন এই পূর্বাভাস"));
+  var ul = el("ul", "rs");
+  E.why.forEach(function (r) { ul.appendChild(el("li", r.tone > 0 ? "g" : r.tone < 0 ? "r" : "", (r.tone > 0 ? "🟢 " : r.tone < 0 ? "🔴 " : "⚪ ") + r.t)); });
+  box.appendChild(ul);
+  // এই ক্যান্ডেলের ভার্সন ইতিহাস
+  var arr = readPred(), rec = null, q;
+  for (q = 0; q < arr.length; q++) if (arr[q].k === L.base + "|" + L.key + "|" + E.target) rec = arr[q];
+  if (rec && rec.v.length) {
+    box.appendChild(el("h3", "", "এই ক্যান্ডেলের পূর্বাভাসের ভার্সন (পুরোনো ও নতুন আলাদা সংরক্ষিত)"));
+    var ul2 = el("ul", "rs");
+    rec.v.forEach(function (v, j) { ul2.appendChild(el("li", "", "#" + (j + 1) + " " + tmStr(v.ts) + " (" + Math.round(v.f * 100) + "% পার) → " + dirTxt(v.dir) + " " + Math.round((v.dir === "up" ? v.p : 1 - v.p) * 100) + "%")); });
+    box.appendChild(ul2);
+  }
+  // অন্য টাইমফ্রেমের চলমান পূর্বাভাস
+  var now = Date.now(), others = arr.filter(function (r) { return r.sym === L.base && r.st === "open" && r.tf !== L.key && now < r.close && r.v.length; });
+  if (others.length) {
+    box.appendChild(el("h3", "", "অন্য টাইমফ্রেমে সর্বশেষ দেখা পূর্বাভাস"));
+    var ul3 = el("ul", "rs");
+    others.forEach(function (r) { var v = r.v[r.v.length - 1]; ul3.appendChild(el("li", "", r.tf + ": " + dirTxt(v.dir) + " " + Math.round((v.dir === "up" ? v.p : 1 - v.p) * 100) + "% (বন্ধ " + tmStr(r.close) + ")")); });
+    box.appendChild(ul3);
+  }
+  box.appendChild(el("p", "small", "এটা সম্ভাবনার হিসাব, নিশ্চয়তা নয়। ক্যান্ডেল চলাকালীন দাম বদলালে পূর্বাভাস বদলাতে পারে।"));
+}
+
+function renderSetups() {
+  var L = last, SU = L.SU, box = $("suBody"); clearEl(box);
+  if (!SU || (!SU.buy && !SU.sell)) { box.appendChild(el("p", "small", "এখন কোনো পরিষ্কার সেটআপ নেই।")); return; }
+  [SU.buy, SU.sell].forEach(function (T) {
+    if (!T) return;
+    var wrap = el("div", "su " + (T.bull ? "buy" : "sell") + (SU.primary === T ? " pri" : ""));
+    var hd = el("div", "suh"); hd.appendChild(el("b", "", T.side + " সেটআপ")); hd.appendChild(el("span", "small", (SU.primary === T ? "সেরা স্কোর · " : "") + "স্কোর " + Math.round(T.score) + "/100")); wrap.appendChild(hd);
+    var dl = el("dl", "kv");
+    kvRow(dl, "Entry", fmt(T.entry)); kvRow(dl, "Stop Loss", fmt(T.sl) + " (" + pct(T.riskPct / 100, 2) + " ঝুঁকি)", "neg");
+    T.tp.forEach(function (p, j) { kvRow(dl, "TP" + (j + 1) + " (RR " + rr(T.rr[j]) + ")", fmt(p), "pos"); });
+    kvRow(dl, "অবস্থা", T.status);
+    wrap.appendChild(dl);
+    var why = "জোনের ভিত্তি: " + T.labels.join(" + ") + (T.aligned ? "; ট্রেন্ডের পক্ষে" : "; ট্রেন্ডের বিপক্ষে (সাবধান)") + (T.predAligned ? "; AI পূর্বাভাসের সাথে মিল আছে" : "") + (T.obst ? "; পথে বাধা: " + T.obst.n + " @ " + fmt(T.obst.p) : "");
+    wrap.appendChild(el("p", "small", why));
+    box.appendChild(wrap);
+  });
+  box.appendChild(el("p", "small", "সেটআপ মানে ঝুঁকি-ফলের পরিকল্পনা, লাভের নিশ্চয়তা নয়। Entry শুধু তখনই বৈধ যখন দাম জোনে আসে। যেকোনো ট্রেডে ঝুঁকি নিজের ক্যাপিটালের ১-২% এর মধ্যে রাখুন।"));
+}
+
+function renderHist() {
+  var L = last, box = $("hsBody"); clearEl(box);
+  var arr = readPred().filter(function (r) { return r.sym === L.base; }), wf = readWF();
+  var tb = el("table", "tbl"), hr = el("tr", "");
+  ["TF", "যাচাই", "সঠিক", "শুরুর আগের পূর্বাভাস", "ব্যাকটেস্ট"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
+  tb.appendChild(hr);
+  TF_BUTTONS.forEach(function (k) {
+    var o = accStats(arr, function (r) { return r.tf === k; }), w = wf[L.base + "|" + k];
+    var tr = el("tr", ""); tr.appendChild(el("td", "", k));
+    tr.appendChild(el("td", "", String(o.n)));
+    tr.appendChild(el("td", "", o.n ? o.pre[1] + "/" + o.n : "–"));
+    tr.appendChild(el("td", "b", o.n >= 1 ? pct(o.pre[1] / o.n, 0) + (o.n < 20 ? " (কম ডেটা)" : "") : "–"));
+    tr.appendChild(el("td", "", w && w.n ? pct(w.hit / w.n, 1) + " (" + w.n + ")" : "–"));
+    tb.appendChild(tr);
+  });
+  box.appendChild(tb);
+  var all = accStats(arr);
+  var dl = el("dl", "kv");
+  kvRow(dl, "সব টাইমফ্রেম মিলিয়ে যাচাই হয়েছে", all.n + " টা");
+  if (all.n) {
+    kvRow(dl, "ক্যান্ডেল শুরুর ২৫% সময়ের মধ্যে ধরা", all.early[0] ? pct(all.early[1] / all.early[0], 0) + " (" + all.early[0] + " টা)" : "–");
+    kvRow(dl, "ক্যান্ডেল শেষের দিকের ভার্সন (সহজ, তাই বেশি দেখায়)", all.fin[0] ? pct(all.fin[1] / all.fin[0], 0) : "–");
+    ["weak", "medium", "strong"].forEach(function (s2) { var x = all.by[s2]; kvRow(dl, "শক্তি " + s2, x[0] ? pct(x[1] / x[0], 0) + " (" + x[0] + " টা)" : "–"); });
+  }
+  kvRow(dl, "এখনো চলমান", all.open + " টা");
+  box.appendChild(dl);
+  box.appendChild(el("h3", "", "সর্বশেষ যাচাই হওয়া পূর্বাভাস"));
+  var done = arr.filter(function (r) { return r.st === "done"; }).slice(-12).reverse();
+  if (!done.length) box.appendChild(el("p", "small", "এখনো কোনো ক্যান্ডেল পুরোপুরি বন্ধ হয়ে যাচাই হয়নি। পাতাটা খোলা রাখলে ক্যান্ডেল বন্ধ হওয়ার পর এখানে আসবে।"));
+  else {
+    var ul = el("ul", "rs");
+    done.forEach(function (r) {
+      var ok = r.act !== "flat" && r.pre.dir === r.act;
+      var pp = r.pre.dir === "up" ? r.pre.p : 1 - r.pre.p;
+      ul.appendChild(el("li", ok ? "g" : r.act === "flat" ? "" : "r", (ok ? "✅ " : r.act === "flat" ? "➖ " : "❌ ") + fmtFull(r.target) + " · " + r.tf + " · পূর্বাভাস " + dirTxt(r.pre.dir) + " " + Math.round(pp * 100) + "% · আসল " + (r.act === "flat" ? "অপরিবর্তিত (গণনায় নেই)" : dirTxt(r.act))));
+    });
+    box.appendChild(ul);
+  }
+  var note = "সঠিকতা শুধু পুরোপুরি বন্ধ হওয়া ক্যান্ডেলে গোনা হয়। ক্যান্ডেল শুরুর আগে করা পূর্বাভাসই আসল মাপকাঠি। ক্যান্ডেলের শেষ দিকে নতুন ভার্সন সহজ হয়ে যায়, তাই সেটা আলাদা দেখানো হলো। ৫০% মানে কয়েন টসের সমান; কয়েক শ' ক্যান্ডেলের পরও ৫৫-৬০% এলে সেটা ভালো। ৯৯% সঠিকতা কোনো সিস্টেমে সম্ভব নয়। এই রেকর্ড শুধু এই ফোনের ব্রাউজারে থাকে।";
+  box.appendChild(el("p", "small", note));
+}
+
+function renderInd() {
+  var L = last, E = L.ENG, box = $("inBody"); clearEl(box);
+  if (!L.IND || !E || !E.ok) { box.appendChild(el("p", "small", "ডেটা কম।")); return; }
+  var i = E.i, tally = E.tally;
+  box.appendChild(el("p", "", "মোট " + L.IND.list.length + "টি ইন্ডিকেটর (সর্বশেষ বন্ধ ক্যান্ডেলের ভিত্তিতে): 🟢 বুলিশ " + tally.bull + " · 🔴 বেয়ারিশ " + tally.bear + " · ⚪ নিরপেক্ষ " + tally.neu));
+  CATS.forEach(function (ct) {
+    var list = L.IND.byCat[ct.k], bl = 0, br = 0;
+    list.forEach(function (d) { var s2 = d.s(i); if (s2 > 0) bl++; else if (s2 < 0) br++; });
+    var det = document.createElement("details"), sm = document.createElement("summary");
+    sm.textContent = ct.name + " (" + list.length + ") · 🟢" + bl + " 🔴" + br; det.appendChild(sm);
+    var tb = el("table", "tbl");
+    list.forEach(function (d) {
+      var s2 = d.s(i), tr = el("tr", ""); tr.appendChild(el("td", "", d.name)); tr.appendChild(el("td", "num", indVal(d, i)));
+      tr.appendChild(el("td", "sg " + (s2 > 0 ? "g" : s2 < 0 ? "r" : ""), s2 > 0 ? "BUY" : s2 < 0 ? "SELL" : "NEUTRAL")); tb.appendChild(tr);
+    });
+    det.appendChild(tb); box.appendChild(det);
+  });
+}
+
+function renderAI() {
+  var L = last; if (!L) return;
+  var ok = L.M && L.M.ok;
+  ["mapCard", "pdCard", "suCard", "hsCard", "inCard"].forEach(function (id) { $(id).hidden = !ok; });
+  if (!ok) return;
+  redrawMap(); renderPred(); renderSetups(); renderHist(); renderInd();
+  var T = aiTrade(L), tl = $("mapTitle");
+  tl.textContent = "AI চার্ট ম্যাপ · " + sp0text(L);
+}
+function sp0text(L) { var sp = splitSym(L.base); return sp.coin + "/" + sp.quote + " · " + TFS[L.key].label; }
+
+function aiBuildAnalysis(P, key, nowMs) {
+  var IND = buildInd(P), M = buildMap(P), ENG = predictEngine(P, IND, M, key, nowMs);
+  var SU = buildSetups(P, M, ENG);
+  return { IND: IND, M: M, ENG: ENG, SU: SU };
+}
+function aiNP(E) {
+  if (!E || !E.ok || !E.live) return { call: false, dir: "up", conf: 0.5, n: 0, pUp: 0.5 };
+  var up = E.live.dir === "up", c = up ? E.live.p : 1 - E.live.p;
+  return { call: c >= 0.52, dir: E.live.dir, conf: c, n: E.nbN, pUp: E.live.p };
+}
+
+function aiInit() {
+  var ch = $("mapChips");
+  AI_LAYERS.forEach(function (x) {
+    var b = el("button", "chip", x[1]); b.type = "button"; b.setAttribute("aria-pressed", AI.layers[x[0]] ? "true" : "false");
+    b.addEventListener("click", function () { AI.layers[x[0]] = AI.layers[x[0]] ? 0 : 1; b.setAttribute("aria-pressed", AI.layers[x[0]] ? "true" : "false"); aiSave(); redrawMap(); });
+    ch.appendChild(b);
+  });
+  var tb = el("button", "chip on", ""); tb.type = "button";
+  function tl() { tb.textContent = AI_TRADE.filter(function (t) { return t[0] === AI.trade; })[0][1]; }
+  tl(); tb.addEventListener("click", function () { var k = AI_TRADE.map(function (t) { return t[0]; }); AI.trade = k[(k.indexOf(AI.trade) + 1) % k.length]; tl(); aiSave(); redrawMap(); });
+  ch.appendChild(tb);
+  $("mapZin").addEventListener("click", function () { AI.nVis = Math.max(30, Math.round(AI.nVis * 0.75)); aiSave(); redrawMap(); });
+  $("mapZout").addEventListener("click", function () { AI.nVis = Math.min(220, Math.round(AI.nVis / 0.75)); aiSave(); redrawMap(); });
+  $("mapReset").addEventListener("click", function () { AI.off = 0; AI.nVis = 80; aiSave(); redrawMap(); });
+  var cv = $("mapChart"), drag = null;
+  function idxAt(e) { var r = cv.getBoundingClientRect(); return AI.geo ? Math.round((e.clientX - r.left) / AI.geo.cw - 0.5) + AI.geo.s : -1; }
+  cv.addEventListener("pointerdown", function (e) { drag = { x: e.clientX, off: AI.off, moved: false }; AI.hover = idxAt(e); redrawMap(); });
+  cv.addEventListener("pointermove", function (e) {
+    if (drag && (e.buttons || e.pointerType === "touch")) {
+      var dx = e.clientX - drag.x;
+      if (Math.abs(dx) > 8) drag.moved = true;
+      if (drag.moved && AI.geo) { AI.off = Math.max(0, drag.off + Math.round(dx / AI.geo.cw)); redrawMap(); return; }
+    }
+    AI.hover = idxAt(e); redrawMap();
+  });
+  function endDrag() { drag = null; }
+  cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+  cv.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") { AI.hover = -1; redrawMap(); } });
+  window.addEventListener("resize", redrawMap);
+}
+var aiAutoAt = 0;
+
 /* ================= মূল প্রবাহ ================= */
 var BAD_COIN = "পেয়ারের নাম ঠিক নেই। শুধু কয়েন লিখুন (BTC, ETH), অথবা পুরো পেয়ার (ETH/BTC, SOL-USDC)। শুধু USDT লিখলে চলবে না।";
 function splitSym(sym) { var p = sym.split("-"); return { coin: p[0], quote: p[1] || "USDT" }; }
@@ -1145,10 +2422,12 @@ function run(manual) {
     var H = res[1] ? analyzeLatest(compute(res[1])) : null;
     var BT = backtest(P, tf.h);
     var fin = applyGate(finalDecision(S, H), BT, $("strict").checked);
-    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT, NP: predictNext(P, BT) };
+    var A = null;
+    try { A = aiBuildAnalysis(P, key, Date.now()); if (A.ENG.ok) A.ENG.live = engLive(A.ENG, S.live, Date.now()); } catch (ex) { A = null; if (window.console) console.error(ex); }
+    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT, NP: aiNP(A && A.ENG), IND: A && A.IND, M: A && A.M, ENG: A && A.ENG, SU: A && A.SU };
     $("dot").className = "dot on";
     track(last);
-    trackNext(last);
+    try { if (A) trackPred(last, Date.now()); } catch (ex) { if (window.console) console.error(ex); }
     ppUpdatePrice(last);
     render();
   }).catch(function (err) {
@@ -1253,6 +2532,7 @@ function run(manual) {
   });
   $("ppAmt").value = load("ppAmt", "100");
   $("ppAmt").addEventListener("input", function () { save("ppAmt", $("ppAmt").value); });
+  aiInit();
   setInterval(tickClock, 1000);
   tickClock();
   window.addEventListener("resize", drawChart);
