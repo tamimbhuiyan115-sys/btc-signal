@@ -170,6 +170,9 @@ details > summary { cursor: pointer; font-weight: 600; padding: 8px 0; border-bo
 canvas.spark { width: 100%; height: 70px; display: block; margin-top: 8px; }
 .fields label input[type=checkbox] { width: auto; margin-right: 6px; }
 .fields label:has(input[type=checkbox]) { flex-direction: row; align-items: center; }
+ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pl { font-size: 0.84rem; margin-top: 4px; padding: 4px 8px; border-radius: 8px; border-left: 3px solid var(--line); font-variant-numeric: tabular-nums; }
+.pl.buy { border-left-color: var(--buy); } .pl.sell { border-left-color: var(--sell); } .pl.pri { background: var(--bg); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -237,7 +240,7 @@ canvas.spark { width: 100%; height: 70px; display: block; margin-top: 8px; }
   </section>
 
   <section class="card" id="botCard" hidden>
-    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১০</h2>
+    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১১</h2>
     <p class="small">বট নিজে চার্ট ম্যাপ করে, ভালো সেটআপ পেলে Entry/SL/TP সহ ট্রেডে ঢোকে আর নিজেই বের হয়। টাকা নকল, দাম ও ক্যান্ডেল আসল। এখান থেকেই বোঝা যাবে সিগনাল আসলে কতটা কাজের।</p>
     <div class="fields">
       <label><input type="checkbox" id="botOn"> বট চালু</label>
@@ -2284,7 +2287,7 @@ function renderSetups() {
     var wrap = el("div", "su " + (T.bull ? "buy" : "sell") + (SU.primary === T ? " pri" : ""));
     var hd = el("div", "suh"); hd.appendChild(el("b", "", T.side + " সেটআপ")); hd.appendChild(el("span", "small", (SU.primary === T ? "সেরা স্কোর · " : "") + "স্কোর " + Math.round(T.score) + "/100")); wrap.appendChild(hd);
     var dl = el("dl", "kv");
-    kvRow(dl, "Entry", fmt(T.entry)); kvRow(dl, "Stop Loss", fmt(T.sl) + " (" + pct(T.riskPct / 100, 2) + " ঝুঁকি)", "neg");
+    kvRow(dl, T.bull ? "কেনার জোন" : "বেচার জোন", fmt(T.zone.lo) + " – " + fmt(T.zone.hi)); kvRow(dl, "Entry", fmt(T.entry)); kvRow(dl, "Stop Loss", fmt(T.sl) + " (" + pct(T.riskPct / 100, 2) + " ঝুঁকি)", "neg");
     T.tp.forEach(function (p, j) { kvRow(dl, "TP" + (j + 1) + " (RR " + rr(T.rr[j]) + ")", fmt(p), "pos"); });
     kvRow(dl, "অবস্থা", T.status);
     wrap.appendChild(dl);
@@ -2515,7 +2518,9 @@ function botEnter(o, L, now) {
   botWhy[K] = { r: "ট্রেডে ঢুকেছে", t: now };
   return true;
 }
+var botPlan = {};
 function botRun(L, now) {
+  if (L.SU) botPlan[L.base + "|" + L.key] = { t: now, px: L.S.live, buy: L.SU.buy, sell: L.SU.sell, pri: L.SU.primary ? L.SU.primary.side : null };
   var o = botRead(), a = botStepAll(o, L, now), b = botEnter(o, L, now);
   if (a || b) botWrite(o);
 }
@@ -2549,6 +2554,23 @@ function renderBot() {
     if (t.st !== "open") return;
     if (t.sym === L.base && t.tf === L.key) { var lv = botLive(t, L); openHere.push(lv); liveU += lv.u * t.riskUsd; }
   });
+  box.appendChild(el("h3", "", "বট কত দামে কিনবে / বেচবে"));
+  var ulp = el("ul", "plan");
+  TF_BUTTONS.forEach(function (k) {
+    var p = botPlan[L.base + "|" + k], li = el("li", "");
+    li.appendChild(el("b", "", k + (k === L.key ? " (খোলা)" : "") + (p && p.px ? " · এখন দাম " + fmt(p.px) : "")));
+    if (!p) { li.appendChild(el("div", "small", "এখনো স্ক্যান হয়নি")); ulp.appendChild(li); return; }
+    [p.buy, p.sell].forEach(function (T) {
+      if (!T) return;
+      var d = el("div", "pl " + (T.bull ? "buy" : "sell") + (p.pri === T.side ? " pri" : ""));
+      d.textContent = (T.bull ? "🟢 কিনবে (BUY): " : "🔴 বেচবে (SELL): ") + fmt(T.entry) + " দামে" + (T.inZone ? " (দাম এখন জোনে, ঢোকার উপযোগী)" : " (দাম " + fmt(T.zone.lo) + "–" + fmt(T.zone.hi) + " জোনে এলে)") +
+        " · SL " + fmt(T.sl) + " · লক্ষ্য " + T.tp.map(fmt).join(" / ") + (p.pri === T.side ? " · ★ বেশি স্কোর" : "");
+      li.appendChild(d);
+    });
+    ulp.appendChild(li);
+  });
+  box.appendChild(ulp);
+  box.appendChild(el("p", "small", "বট কেনে বা বেচে শুধু তখন, যখন দাম ওই জোনে ঢোকে আর স্কোর/ট্রেন্ড মেলে। দাম বদলালে এই সংখ্যাও বদলায়। এগুলো নকল টাকার ট্রেড, আসল কেনাবেচা নয়।"));
   var dl = el("dl", "kv");
   kvRow(dl, "ডেমো ব্যালেন্স (বন্ধ ট্রেড)", eq.toFixed(2) + " (শুরু " + o.cfg.start + ")");
   kvRow(dl, "মোট লাভ/লোকসান", botMoney(eq - o.cfg.start) + " (" + (((eq / o.cfg.start) - 1) * 100).toFixed(1) + "%)", eq >= o.cfg.start ? "pos" : "neg");
