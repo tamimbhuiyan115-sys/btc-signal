@@ -2551,6 +2551,17 @@ function renderBot() {
   box.appendChild(dl);
   var vd = el("p", s.n >= 30 && s.tot <= 0 ? "warn" : "small", botVerdict(s)); box.appendChild(vd);
 
+  box.appendChild(el("h3", "", "টাইমফ্রেম অনুযায়ী ফল (" + L.base.replace("-", "/") + ")"));
+  var tb = el("table", "tbl"), hr = el("tr", "");
+  ["TF", "বন্ধ", "জেতা", "লাভ/লোকসান", "চলমান"].forEach(function (x) { hr.appendChild(el("th", "", x)); });
+  tb.appendChild(hr);
+  TF_BUTTONS.forEach(function (k) {
+    var q = botStats(o, function (t) { return t.sym === L.base && t.tf === k; }), op = o.tr.filter(function (t) { return t.st === "open" && t.sym === L.base && t.tf === k; }).length;
+    var tr = el("tr", ""); tr.appendChild(el("td", "", k)); tr.appendChild(el("td", "", String(q.n)));
+    tr.appendChild(el("td", "", q.n ? pct(q.w / q.n, 0) : "–")); tr.appendChild(el("td", "b", q.n ? botMoney(q.pnl) + " (" + botFmtR(q.tot) + ")" : "–")); tr.appendChild(el("td", "", String(op)));
+    tb.appendChild(tr);
+  });
+  box.appendChild(tb);
   box.appendChild(el("h3", "", "এখন চলমান ট্রেড (" + sp0text(L) + ")"));
   if (!openHere.length) box.appendChild(el("p", "small", o.cfg.on ? "কোনো ট্রেড খোলা নেই। বট অপেক্ষা করছে: দাম কোনো ভালো জোনে এলে, স্কোর " + o.cfg.minScore + "+ ও ট্রেন্ডের পক্ষে হলে ঢুকবে।" : "বট বন্ধ আছে।"));
   openHere.forEach(function (t) {
@@ -2575,7 +2586,7 @@ function renderBot() {
     var cv = document.createElement("canvas"); cv.className = "spark"; box.appendChild(cv);
     setTimeout(function () { botSpark(cv, o); }, 0);
   }
-  box.appendChild(el("p", "small", "নিয়ম: বট শুধু আসল দামে নকল টাকা দিয়ে ট্রেড করে। ঝুঁকি প্রতি ট্রেডে " + o.cfg.risk + "%, TP1-এ ৫০%, TP2-এ ৩০%, TP3-এ বাকিটা বেরোয়; TP1 লাগলে SL এন্ট্রিতে সরে যায়। এক ক্যান্ডেলে SL ও TP দুটোই ছুঁলে SL আগে ধরা হয় (খারাপ ধরে নেওয়া)। ফি ০.২% কাটা হয়। স্লিপেজ ধরা হয়নি, আসলে ফল এর চেয়ে একটু খারাপ হতে পারে। বট শুধু পাতা খোলা থাকলে নতুন ট্রেডে ঢোকে, আর শুধু যে কয়েন-টাইমফ্রেম খোলা সেটার ট্রেডই চালায়। স্পটে শর্ট (SELL) করা যায় না, SELL মানে ফিউচারস-ধরনের নকল ট্রেড।"));
+  box.appendChild(el("p", "small", "নিয়ম: বট শুধু আসল দামে নকল টাকা দিয়ে ট্রেড করে। ঝুঁকি প্রতি ট্রেডে " + o.cfg.risk + "%, TP1-এ ৫০%, TP2-এ ৩০%, TP3-এ বাকিটা বেরোয়; TP1 লাগলে SL এন্ট্রিতে সরে যায়। এক ক্যান্ডেলে SL ও TP দুটোই ছুঁলে SL আগে ধরা হয় (খারাপ ধরে নেওয়া)। ফি ০.২% কাটা হয়। স্লিপেজ ধরা হয়নি, আসলে ফল এর চেয়ে একটু খারাপ হতে পারে। বট শুধু পাতা খোলা থাকলে নতুন ট্রেডে ঢোকে। খোলা কয়েনের সব টাইমফ্রেম (১ মি থেকে ১ দিন) একটা একটা করে নিজে স্ক্যান করে ট্রেড নেয়। স্পটে শর্ট (SELL) করা যায় না, SELL মানে ফিউচারস-ধরনের নকল ট্রেড।"));
 }
 function botSpark(cv, o) {
   var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
@@ -2591,20 +2602,65 @@ function botSpark(cv, o) {
   g.beginPath(); g.moveTo(0, y0); g.lineTo(w, y0); g.stroke();
 }
 function botDraw(g, L, s, e, X, Y, cBuy, cSell, cFg) {
-  var o = botRead(), P = L.P, any = false;
+  var o = botRead(), P = L.P, n = P.n, any = false, cw = AI.geo ? AI.geo.cw : 4, plotW = X(e + 100);
   o.tr.forEach(function (t) {
     if (t.sym !== L.base || t.tf !== L.key) return;
-    var i = botEntryIdx(P, t.entryT); if (i < s || i >= e) return;
-    var c = t.d > 0 ? cBuy : cSell, x = X(i), y = Y(t.e);
-    g.fillStyle = c; g.beginPath();
-    if (t.d > 0) { g.moveTo(x, y - 2); g.lineTo(x - 5, y + 8); g.lineTo(x + 5, y + 8); } else { g.moveTo(x, y + 2); g.lineTo(x - 5, y - 8); g.lineTo(x + 5, y - 8); }
+    var i = botEntryIdx(P, t.entryT); if (i < 0 || i >= e) return;
+    var v = t.st === "open" ? botLive(t, L) : t, closed = v.st === "closed";
+    var j = closed ? botEntryIdx(P, v.closeT) : n - 1; if (j < 0) j = n - 1;
+    if (j < s) return;
+    var x0 = X(Math.max(i, s)) - cw / 2, x1 = X(j) + cw / 2 + (closed ? 0 : cw * 2);
+    var far = t.d > 0 ? Math.max.apply(null, t.tp) : Math.min.apply(null, t.tp);
+    var win = v.R > 0, cc = t.d > 0 ? cBuy : cSell;
+    g.globalAlpha = 0.11; g.fillStyle = cBuy; g.fillRect(x0, Math.min(Y(t.e), Y(far)), x1 - x0, Math.abs(Y(far) - Y(t.e)));
+    g.fillStyle = cSell; g.fillRect(x0, Math.min(Y(t.e), Y(t.sl0)), x1 - x0, Math.abs(Y(t.sl0) - Y(t.e))); g.globalAlpha = 1;
+    g.strokeStyle = cFg; g.lineWidth = 1; g.setLineDash([]); g.beginPath(); g.moveTo(x0, Y(t.e)); g.lineTo(x1, Y(t.e)); g.stroke();
+    var xi = X(i), yi = Y(t.e);
+    g.fillStyle = cc; g.beginPath();
+    if (t.d > 0) { g.moveTo(xi, yi - 2); g.lineTo(xi - 5, yi + 8); g.lineTo(xi + 5, yi + 8); } else { g.moveTo(xi, yi + 2); g.lineTo(xi - 5, yi - 8); g.lineTo(xi + 5, yi - 8); }
     g.fill();
-    g.fillStyle = cFg; g.textAlign = "center"; g.font = "700 9px -apple-system, system-ui, sans-serif";
-    g.fillText("BOT " + t.side + (t.st === "closed" ? (t.R > 0 ? " ✓" : " ✗") : ""), x, y + (t.d > 0 ? 18 : -18));
+    var res = (closed ? (win ? "✓ " : "✗ ") : "● চলছে ") + botFmtR(closed ? v.R : v.u) + " · " + botMoney((closed ? v.pnl : v.u * t.riskUsd));
+    g.font = "700 10px -apple-system, system-ui, sans-serif";
+    var tw = g.measureText(res).width + 10, px = Math.min(Math.max(x1 - tw, 2), 9999), py = Y(t.e) + (t.d > 0 ? 14 : -14);
+    py = Math.max(24, py);
+    g.fillStyle = (closed ? win : v.u >= 0) ? cBuy : cSell; g.beginPath();
+    if (g.roundRect) g.roundRect(px, py - 8, tw, 16, 4); else g.rect(px, py - 8, tw, 16);
+    g.fill(); g.fillStyle = "#fff"; g.textAlign = "left"; g.fillText(res, px + 5, py + 0.5);
     any = true;
   });
   g.font = "600 10px -apple-system, system-ui, sans-serif"; g.textBaseline = "middle";
   return any;
+}
+
+/* ---- সব টাইমফ্রেম নিজে স্ক্যান করে ট্রেড (একটা একটা করে, ধীরে, যাতে KuCoin আটকে না দেয়) ---- */
+var botScanning = false, botScanAt = {};
+function botScan() {
+  if (botScanning || !last || document.hidden) return;
+  var o = botRead(), base = last.base, cur = last.key, now = Date.now();
+  var todo = TF_BUTTONS.filter(function (k) {
+    if (k === cur) return false;
+    if (!o.cfg.on && !o.tr.some(function (t) { return t.st === "open" && t.sym === base && t.tf === k; })) return false;
+    return now - (botScanAt[base + "|" + k] || 0) >= Math.max(60, TFS[k].refresh) * 1000;
+  });
+  if (!todo.length) return;
+  botScanning = true;
+  var chain = Promise.resolve();
+  todo.forEach(function (k) {
+    chain = chain.then(function () {
+      return new Promise(function (ok) { setTimeout(ok, 1500); });
+    }).then(function () {
+      if (!last || last.base !== base) return;
+      botScanAt[base + "|" + k] = Date.now();
+      return fetchCandles(base, k).then(function (cd) {
+        var P = compute(cd), S = analyzeLatest(P), A = aiBuildAnalysis(P, k, Date.now());
+        if (A.ENG.ok) A.ENG.live = engLive(A.ENG, S.live, Date.now());
+        var L2 = { base: base, key: k, cd: cd, P: P, S: S, ENG: A.ENG, SU: A.SU, IND: A.IND, M: A.M };
+        botRun(L2, Date.now());
+        try { trackPred(L2, Date.now()); } catch (e) {}
+      }).catch(function () {});
+    });
+  });
+  chain.then(function () { botScanning = false; if (last) { try { renderBot(); renderHist(); } catch (e) {} } }, function () { botScanning = false; });
 }
 function botInit() {
   var o = botRead(), c = o.cfg;
@@ -2676,6 +2732,7 @@ function run(manual) {
     try { if (A) botRun(last, Date.now()); } catch (ex) { if (window.console) console.error(ex); }
     ppUpdatePrice(last);
     render();
+    setTimeout(botScan, 2500);
   }).catch(function (err) {
     showError("ডেটা আনা যায়নি (" + (err && err.message ? err.message : "অজানা এরর") + "). কয়েনের নাম বা ইন্টারনেট দেখে আবার চেষ্টা করুন। সমস্যা থাকলে এই লেখাটা আমাকে পাঠান।");
   }).finally(function () {
