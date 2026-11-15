@@ -164,6 +164,9 @@ table.tbl td.num { text-align: right; }
 table.tbl td.b { font-weight: 700; }
 td.sg { font-weight: 700; font-size: 0.72rem; text-align: right; color: var(--muted); } td.sg.g { color: var(--buy); } td.sg.r { color: var(--sell); }
 details > summary { cursor: pointer; font-weight: 600; padding: 8px 0; border-bottom: 1px solid var(--line); }
+
+#mapCard.full { position: fixed; inset: 0; z-index: 60; border-radius: 0; overflow-y: auto; padding: max(8px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+#mapCard.full canvas#mapChart { height: calc(100vh - 230px); min-height: 320px; touch-action: none; }
 </style>
 </head>
 <body>
@@ -214,7 +217,7 @@ details > summary { cursor: pointer; font-weight: 600; padding: 8px 0; border-bo
   <section class="card" id="mapCard" hidden>
     <h2 id="mapTitle">AI চার্ট ম্যাপ</h2>
     <div class="chips" id="mapChips"></div>
-    <div class="chips"><button class="chip" id="mapZin" type="button">＋ জুম</button><button class="chip" id="mapZout" type="button">－ জুম</button><button class="chip" id="mapReset" type="button">⟲ রিসেট</button></div>
+    <div class="chips"><button class="chip" id="mapZin" type="button">＋ জুম</button><button class="chip" id="mapZout" type="button">－ জুম</button><button class="chip" id="mapReset" type="button">⟲ রিসেট</button><button class="chip" id="mapFull" type="button">⛶ বড় পর্দা</button></div>
     <canvas id="mapChart"></canvas>
     <div class="readout" id="mapReadout"></div>
     <div class="small">ক্যান্ডেলের উপর অটো আঁকা: সবুজ/লাল জোন (Demand/Supply), Order Block, FVG, S/R লাইন, Fibonacci (0.382/0.5/0.618/0.786), HH/HL/LH/LL, BOS/CHOCH, Liquidity Sweep, Double Top/Bottom, Head &amp; Shoulders। সবুজ ঘর লাভের জোন, লাল ঘর স্টপ-লস জোন। নীল ▲/▼ পরের ক্যান্ডেলের পূর্বাভাস। এসব নিয়ম-ভিত্তিক গাণিতিক শনাক্তকরণ, ভবিষ্যদ্বাণী নয়।</div>
@@ -1995,7 +1998,7 @@ var AI_TRADE = [["auto", "ট্রেড: অটো"], ["buy", "ট্রেড
 (function () {
   try {
     var o = JSON.parse(load("aiv", "{}"));
-    if (o.nVis >= 30 && o.nVis <= 220) AI.nVis = o.nVis;
+    if (o.nVis >= 15 && o.nVis <= 400) AI.nVis = o.nVis;
     if (o.layers) for (var k in AI.layers) if (k in o.layers) AI.layers[k] = o.layers[k] ? 1 : 0;
     if (o.trade) AI.trade = o.trade;
   } catch (e) {}
@@ -2189,7 +2192,7 @@ function drawMap() {
 function mapReadout() {
   var L = last, box = $("mapReadout"); if (!L) return;
   var P = L.P, k = AI.hover;
-  if (!AI.geo || k < 0 || k >= P.n) { box.textContent = "চার্টে আঙুল রাখুন: ক্যান্ডেলের তথ্য। বাঁ-ডানে টানলে পুরোনো ক্যান্ডেল দেখা যাবে। জুম বোতাম দিয়ে ক্যান্ডেল কমবেশি করুন।"; return; }
+  if (!AI.geo || k < 0 || k >= P.n) { box.textContent = "আঙুল রাখুন: ক্যান্ডেলের তথ্য। এক আঙুলে বাঁ-ডানে টানুন: পুরোনো ক্যান্ডেল। দুই আঙুলে চিমটি কেটে জুম করুন (মাউসে স্ক্রল)। দুইবার ট্যাপ: রিসেট।"; return; }
   var c = L.cd[k], ch = c.o ? c.c / c.o - 1 : 0;
   box.textContent = fmtFull(P.t[k]) + " | O " + fmt(c.o) + " H " + fmt(c.h) + " L " + fmt(c.l) + " C " + fmt(c.c) + " (" + (ch >= 0 ? "+" : "") + pct(ch, 2) + ")";
 }
@@ -2363,23 +2366,52 @@ function aiInit() {
   function tl() { tb.textContent = AI_TRADE.filter(function (t) { return t[0] === AI.trade; })[0][1]; }
   tl(); tb.addEventListener("click", function () { var k = AI_TRADE.map(function (t) { return t[0]; }); AI.trade = k[(k.indexOf(AI.trade) + 1) % k.length]; tl(); aiSave(); redrawMap(); });
   ch.appendChild(tb);
-  $("mapZin").addEventListener("click", function () { AI.nVis = Math.max(30, Math.round(AI.nVis * 0.75)); aiSave(); redrawMap(); });
-  $("mapZout").addEventListener("click", function () { AI.nVis = Math.min(220, Math.round(AI.nVis / 0.75)); aiSave(); redrawMap(); });
+  $("mapZin").addEventListener("click", function () { AI.nVis = Math.max(15, Math.round(AI.nVis * 0.75)); aiSave(); redrawMap(); });
+  $("mapZout").addEventListener("click", function () { AI.nVis = Math.min(400, Math.round(AI.nVis / 0.75)); aiSave(); redrawMap(); });
   $("mapReset").addEventListener("click", function () { AI.off = 0; AI.nVis = 80; aiSave(); redrawMap(); });
-  var cv = $("mapChart"), drag = null;
+  var cv = $("mapChart"), drag = null, ptrs = {}, pinch = null, lastTap = 0;
   function idxAt(e) { var r = cv.getBoundingClientRect(); return AI.geo ? Math.round((e.clientX - r.left) / AI.geo.cw - 0.5) + AI.geo.s : -1; }
-  cv.addEventListener("pointerdown", function (e) { drag = { x: e.clientX, off: AI.off, moved: false }; AI.hover = idxAt(e); redrawMap(); });
+  function clampN(v) { return Math.max(15, Math.min(400, Math.round(v))); }
+  function pcount() { var c = 0; for (var k in ptrs) c++; return c; }
+  function pdist() { var a = [], k; for (k in ptrs) a.push(ptrs[k]); return a.length > 1 ? Math.max(10, Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y)) : 0; }
+  cv.addEventListener("pointerdown", function (e) {
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+    if (pcount() >= 2) { pinch = { d: pdist(), n: AI.nVis }; drag = null; return; }
+    drag = { x: e.clientX, off: AI.off, moved: false }; AI.hover = idxAt(e); redrawMap();
+  });
   cv.addEventListener("pointermove", function (e) {
+    if (ptrs[e.pointerId]) ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (pinch && pcount() >= 2) { AI.nVis = clampN(pinch.n * pinch.d / pdist()); redrawMap(); return; }
     if (drag && (e.buttons || e.pointerType === "touch")) {
       var dx = e.clientX - drag.x;
-      if (Math.abs(dx) > 8) drag.moved = true;
+      if (Math.abs(dx) > 6) drag.moved = true;
       if (drag.moved && AI.geo) { AI.off = Math.max(0, drag.off + Math.round(dx / AI.geo.cw)); redrawMap(); return; }
     }
     AI.hover = idxAt(e); redrawMap();
   });
-  function endDrag() { drag = null; }
-  cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+  function endPtr(e) {
+    var wasTap = drag && !drag.moved && !pinch;
+    delete ptrs[e.pointerId];
+    if (pcount() < 2) { if (pinch) aiSave(); pinch = null; }
+    if (e.type === "pointerup" && wasTap) {
+      var t = Date.now();
+      if (t - lastTap < 320) { AI.off = 0; AI.nVis = 80; aiSave(); redrawMap(); }
+      lastTap = t;
+    } else if (drag && drag.moved) aiSave();
+    drag = null;
+  }
+  cv.addEventListener("pointerup", endPtr); cv.addEventListener("pointercancel", endPtr);
   cv.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") { AI.hover = -1; redrawMap(); } });
+  cv.addEventListener("wheel", function (e) {
+    e.preventDefault(); AI.nVis = clampN(AI.nVis * (e.deltaY > 0 ? 1.12 : 1 / 1.12)); aiSave(); redrawMap();
+  }, { passive: false });
+  $("mapFull").addEventListener("click", function () {
+    var c = $("mapCard"), on = !c.classList.contains("full");
+    c.classList.toggle("full", on); document.body.style.overflow = on ? "hidden" : "";
+    $("mapFull").textContent = on ? "✕ বন্ধ করুন" : "⛶ বড় পর্দা";
+    redrawMap(); setTimeout(redrawMap, 60);
+  });
   window.addEventListener("resize", redrawMap);
 }
 var aiAutoAt = 0;
