@@ -175,6 +175,8 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
 .pl { font-size: 0.84rem; margin-top: 4px; padding: 4px 8px; border-radius: 8px; border-left: 3px solid var(--line); font-variant-numeric: tabular-nums; }
 .pl.buy { border-left-color: var(--buy); } .pl.sell { border-left-color: var(--sell); } .pl.pri { background: var(--bg); font-weight: 600; }
 .fields select { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--fg); font: inherit; }
+.callbar { padding: 8px 12px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; margin: 2px 0 10px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); }
+.callbar.call { background: var(--buy); color: #fff; border-color: var(--buy); }
 </style>
 </head>
 <body>
@@ -242,7 +244,7 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
   </section>
 
   <section class="card" id="botCard" hidden>
-    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১৮</h2>
+    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১৯</h2>
     <p class="small">বট নিজে চার্ট ম্যাপ করে, ভালো সেটআপ পেলে Entry/SL/TP সহ ট্রেডে ঢোকে আর নিজেই বের হয়। টাকা নকল, দাম ও ক্যান্ডেল আসল। এখান থেকেই বোঝা যাবে সিগনাল আসলে কতটা কাজের।</p>
     <div class="fields">
       <label><input type="checkbox" id="botOn"> বট চালু</label>
@@ -2048,6 +2050,12 @@ function aiPlan(L) {
     exitT: E.target, p: up ? lv.p : 1 - lv.p, weak: !E.call, late: lv.f > 0.8, f: lv.f
   };
 }
+function aiCall(L) {
+  var pl = aiPlan(L); if (!pl.side) return { k: "none", t: "ডেটা কম" };
+  if (pl.late) return { k: "late", t: "ক্যান্ডেলের বেশির ভাগ সময় পার, নতুন ক্যান্ডেলের অপেক্ষা", pl: pl };
+  if (pl.weak) return { k: "weak", t: "এখন কল নেই: সংকেত দুর্বল (" + pl.side + " " + Math.round(pl.p * 100) + "%), অপেক্ষা করুন", pl: pl };
+  return { k: "call", t: "🔔 এখন কল: " + (pl.bull ? "BUY (কিনুন)" : "SELL (বেচুন)") + " · এখনকার দামে ≈ " + fmt(pl.entry), pl: pl };
+}
 function aiTrade(L) {
   var SU = L.SU; if (!SU) return null;
   if (AI.trade === "ai") { var pl = aiPlan(L); return pl.side ? pl : null; }
@@ -2224,7 +2232,8 @@ function drawMap() {
     g.strokeStyle = cPred; g.lineWidth = 2; g.beginPath(); g.moveTo(rxx, rh); g.lineTo(rxx, rl); g.stroke();
     g.beginPath(); g.moveTo(rxx - 3, rh); g.lineTo(rxx + 3, rh); g.moveTo(rxx - 3, rl); g.lineTo(rxx + 3, rl); g.stroke();
     g.restore();
-    pill("NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "%" + (E.call ? "" : " ⚠দুর্বল") + "  →  " + (upP ? "BUY @ " : "SELL @ ") + fmt(L.S.live), 4, padT + 10, cPred, "#fff", "l");
+    var cs0 = aiCall(L);
+    pill(cs0.k === "call" ? "🔔 কল: " + (upP ? "BUY" : "SELL") + " @ " + fmt(L.S.live) + " · " + (upP ? "UP " : "DOWN ") + Math.round(pp * 100) + "%" : "NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "% · কল নয় (" + (cs0.k === "late" ? "দেরি" : "দুর্বল") + ")", 4, padT + 10, cs0.k === "call" ? (upP ? cBuy : cSell) : cMut, "#fff", "l");
   }
   // হোভার
   if (AI.hover >= s && AI.hover < e) {
@@ -2256,6 +2265,7 @@ function dirTxt(d) { return d === "up" ? "UP 🟢" : "DOWN 🔴"; }
 function renderPred() {
   var L = last, E = L.ENG, box = $("pdBody"); clearEl(box);
   if (!E || !E.ok) { box.appendChild(el("p", "small", "পূর্বাভাসের জন্য যথেষ্ট ক্যান্ডেল নেই (কমপক্ষে ~২৫০টা লাগে)।")); return; }
+  var cs = aiCall(L); box.appendChild(el("div", "callbar " + cs.k, cs.t));
   var lv = E.live, up = lv.dir === "up", pu = lv.p, pd = 1 - lv.p, pp = up ? pu : pd;
   var top = el("div", "predbox");
   var cl = true, weak = !E.call;
@@ -2398,6 +2408,7 @@ function renderAI() {
   redrawMap(); renderPred(); renderSetups(); renderBot(); renderHist(); renderInd();
   var T = aiTrade(L), tl = $("mapTitle");
   tl.textContent = "AI চার্ট ম্যাপ · " + sp0text(L);
+  try { var cc = aiCall(L); document.title = (cc.k === "call" ? "🔔 " + cc.pl.side + " কল · " : "") + sp0text(L); } catch (e) {}
 }
 function sp0text(L) { var sp = splitSym(L.base); return sp.coin + "/" + sp.quote + " · " + TFS[L.key].label; }
 
