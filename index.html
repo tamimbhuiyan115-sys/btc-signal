@@ -147,6 +147,7 @@ canvas#mapChart { width: 100%; height: 420px; display: block; touch-action: pan-
 .card h3 { font-size: 0.82rem; margin: 14px 0 6px; color: var(--fg); }
 .predbox .arrow.up, .predbox .big.up { color: var(--buy); }
 .predbox .arrow.dn, .predbox .big.dn { color: var(--sell); }
+.predbox .arrow.nc, .predbox .big.nc { color: var(--muted); }
 .pbar { display: flex; height: 22px; border-radius: 8px; overflow: hidden; background: var(--line); margin: 4px 0 8px; font-size: 0.72rem; font-weight: 700; color: #fff; }
 .pbar i { display: block; font-style: normal; padding: 3px 6px; white-space: nowrap; overflow: hidden; min-width: 0; }
 .pbar i.up { background: var(--buy); } .pbar i.dn { background: var(--sell); text-align: right; }
@@ -240,7 +241,7 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
   </section>
 
   <section class="card" id="botCard" hidden>
-    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১১</h2>
+    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১২</h2>
     <p class="small">বট নিজে চার্ট ম্যাপ করে, ভালো সেটআপ পেলে Entry/SL/TP সহ ট্রেডে ঢোকে আর নিজেই বের হয়। টাকা নকল, দাম ও ক্যান্ডেল আসল। এখান থেকেই বোঝা যাবে সিগনাল আসলে কতটা কাজের।</p>
     <div class="fields">
       <label><input type="checkbox" id="botOn"> বট চালু</label>
@@ -1916,7 +1917,7 @@ function predictEngine(P, IND, M, key, nowMs) {
 
   var target = forming ? lastT : lastT + tfms;
   Object.assign(E, {
-    ok: true, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, edge: edge,
+    ok: true, call: wf.nn[b] >= 30 && edge >= 0.04, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, edge: edge,
     str: st.k, strL: st.l, agree: agree, sigma: sigma, wf: wf, why: why, tally: tally,
     target: target, close: target + tfms, tfms: tfms, openPx: forming ? P.o[n - 1] : null
   });
@@ -1931,7 +1932,7 @@ function engLive(E, livePx, nowMs) {
   var mu0 = E.sigma * normInv(Math.min(0.999, Math.max(0.001, E.p0)));
   var rem = Math.max(1 - f, 1e-4), sd = E.sigma * Math.sqrt(rem);
   var z = (rNow + mu0 * (1 - f)) / sd;
-  var p = Math.min(0.999, Math.max(0.001, normCdf(z)));
+  var p = Math.min(0.85, Math.max(0.15, normCdf(z)));
   var center = livePx * (1 + mu0 * (1 - f)), sp = livePx * sd;
   return {
     f: f, rNow: rNow, p: p, dir: p >= 0.5 ? "up" : "down", open: open,
@@ -1977,7 +1978,7 @@ function trackPred(L, nowMs) {
     if (!rec) {
       rec = {
         k: key, sym: L.base, tf: L.key, target: E.target, close: E.close, seen: now, seenF: lv.f, early: lv.f <= 0.25,
-        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN }, v: [], st: "open"
+        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN, call: !!E.call }, v: [], st: "open"
       };
       arr.push(rec); changed = true;
     }
@@ -1999,13 +2000,14 @@ function trackPred(L, nowMs) {
   return arr;
 }
 function accStats(arr, f) {
-  var o = { n: 0, pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0 };
+  var o = { n: 0, call: [0, 0], pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0 };
   arr.forEach(function (r) {
     if (f && !f(r)) return;
     if (r.st === "open") { o.open++; return; }
     if (r.st !== "done" || r.act === "flat") return;
     var hit = r.pre.dir === r.act ? 1 : 0;
     o.n++; o.pre[0]++; o.pre[1] += hit;
+    if (r.pre.call) { o.call[0]++; o.call[1] += hit; }
     if (r.early) { o.early[0]++; o.early[1] += hit; }
     var bk = o.by[r.pre.str]; if (bk) { bk[0]++; bk[1] += hit; }
     var lastV = r.v[r.v.length - 1];
@@ -2204,7 +2206,7 @@ function drawMap() {
     g.strokeStyle = cPred; g.lineWidth = 2; g.beginPath(); g.moveTo(rxx, rh); g.lineTo(rxx, rl); g.stroke();
     g.beginPath(); g.moveTo(rxx - 3, rh); g.lineTo(rxx + 3, rh); g.moveTo(rxx - 3, rl); g.lineTo(rxx + 3, rl); g.stroke();
     g.restore();
-    pill("NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "%", tx - 10, Math.max(padT + 8, ty - 2), cPred, "#fff", "r");
+    pill(E.call ? "NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "%" : "NEXT ? অনিশ্চিত", tx - 10, Math.max(padT + 8, ty - 2), cPred, "#fff", "r");
   }
   // হোভার
   if (AI.hover >= s && AI.hover < e) {
@@ -2237,8 +2239,10 @@ function renderPred() {
   if (!E || !E.ok) { box.appendChild(el("p", "small", "পূর্বাভাসের জন্য যথেষ্ট ক্যান্ডেল নেই (কমপক্ষে ~২৫০টা লাগে)।")); return; }
   var lv = E.live, up = lv.dir === "up", pu = lv.p, pd = 1 - lv.p, pp = up ? pu : pd;
   var top = el("div", "predbox");
-  top.appendChild(el("div", "arrow " + (up ? "up" : "dn"), up ? "▲" : "▼"));
-  var tb = el("div", ""); tb.appendChild(el("div", "big " + (up ? "up" : "dn"), "NEXT CANDLE: " + dirTxt(lv.dir)));
+  var cl = !!E.call;
+  top.appendChild(el("div", "arrow " + (cl ? (up ? "up" : "dn") : "nc"), cl ? (up ? "▲" : "▼") : "?"));
+  var tb = el("div", ""); tb.appendChild(el("div", "big " + (cl ? (up ? "up" : "dn") : "nc"), cl ? "NEXT CANDLE: " + dirTxt(lv.dir) : "NEXT CANDLE: অনিশ্চিত ⚪ (কল নয়)"));
+  if (!cl) tb.appendChild(el("div", "small", "ঝোঁক সামান্য " + (up ? "UP" : "DOWN") + " দিকে, কিন্তু ইতিহাসে এমন অবস্থায় সঠিকতা এত কম যে বট কল দিচ্ছে না। এই অবস্থায় ট্রেড না নেওয়াই ভালো।"));
   tb.appendChild(el("div", "small", E.forming ? "চলমান " + TFS[L.key].label + " ক্যান্ডেল কোন রঙে বন্ধ হবে (এখনো চলছে)" : "পরের " + TFS[L.key].label + " ক্যান্ডেল"));
   top.appendChild(tb); box.appendChild(top);
   var bar = el("div", "pbar"), a = el("i", "up"), b = el("i", "dn");
@@ -2302,7 +2306,7 @@ function renderHist() {
   var L = last, box = $("hsBody"); clearEl(box);
   var arr = readPred().filter(function (r) { return r.sym === L.base; }), wf = readWF();
   var tb = el("table", "tbl"), hr = el("tr", "");
-  ["TF", "যাচাই", "সঠিক", "শুরুর আগের পূর্বাভাস", "ব্যাকটেস্ট"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
+  ["TF", "যাচাই", "সঠিক", "সব পূর্বাভাস", "শুধু কল", "ব্যাকটেস্ট"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
   tb.appendChild(hr);
   TF_BUTTONS.forEach(function (k) {
     var o = accStats(arr, function (r) { return r.tf === k; }), w = wf[L.base + "|" + k];
@@ -2310,6 +2314,7 @@ function renderHist() {
     tr.appendChild(el("td", "", String(o.n)));
     tr.appendChild(el("td", "", o.n ? o.pre[1] + "/" + o.n : "–"));
     tr.appendChild(el("td", "b", o.n >= 1 ? pct(o.pre[1] / o.n, 0) + (o.n < 20 ? " (কম ডেটা)" : "") : "–"));
+    tr.appendChild(el("td", "", o.call[0] ? pct(o.call[1] / o.call[0], 0) + " (" + o.call[0] + ")" : "–"));
     tr.appendChild(el("td", "", w && w.n ? pct(w.hit / w.n, 1) + " (" + w.n + ")" : "–"));
     tb.appendChild(tr);
   });
@@ -2378,7 +2383,7 @@ function aiBuildAnalysis(P, key, nowMs) {
 function aiNP(E) {
   if (!E || !E.ok || !E.live) return { call: false, dir: "up", conf: 0.5, n: 0, pUp: 0.5 };
   var up = E.live.dir === "up", c = up ? E.live.p : 1 - E.live.p;
-  return { call: c >= 0.52, dir: E.live.dir, conf: c, n: E.nbN, pUp: E.live.p };
+  return { call: !!E.call && c >= 0.52, dir: E.live.dir, conf: c, n: E.nbN, pUp: E.live.p };
 }
 
 function aiInit() {
