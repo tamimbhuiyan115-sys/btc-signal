@@ -147,6 +147,7 @@ canvas#mapChart { width: 100%; height: 420px; display: block; touch-action: pan-
 .card h3 { font-size: 0.82rem; margin: 14px 0 6px; color: var(--fg); }
 .predbox .arrow.up, .predbox .big.up { color: var(--buy); }
 .predbox .arrow.dn, .predbox .big.dn { color: var(--sell); }
+.predbox .arrow.nc, .predbox .big.nc { color: var(--muted); }
 .pbar { display: flex; height: 22px; border-radius: 8px; overflow: hidden; background: var(--line); margin: 4px 0 8px; font-size: 0.72rem; font-weight: 700; color: #fff; }
 .pbar i { display: block; font-style: normal; padding: 3px 6px; white-space: nowrap; overflow: hidden; min-width: 0; }
 .pbar i.up { background: var(--buy); } .pbar i.dn { background: var(--sell); text-align: right; }
@@ -170,6 +171,9 @@ details > summary { cursor: pointer; font-weight: 600; padding: 8px 0; border-bo
 canvas.spark { width: 100%; height: 70px; display: block; margin-top: 8px; }
 .fields label input[type=checkbox] { width: auto; margin-right: 6px; }
 .fields label:has(input[type=checkbox]) { flex-direction: row; align-items: center; }
+ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.pl { font-size: 0.84rem; margin-top: 4px; padding: 4px 8px; border-radius: 8px; border-left: 3px solid var(--line); font-variant-numeric: tabular-nums; }
+.pl.buy { border-left-color: var(--buy); } .pl.sell { border-left-color: var(--sell); } .pl.pri { background: var(--bg); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -237,10 +241,11 @@ canvas.spark { width: 100%; height: 70px; display: block; margin-top: 8px; }
   </section>
 
   <section class="card" id="botCard" hidden>
-    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম)</h2>
+    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১৩</h2>
     <p class="small">বট নিজে চার্ট ম্যাপ করে, ভালো সেটআপ পেলে Entry/SL/TP সহ ট্রেডে ঢোকে আর নিজেই বের হয়। টাকা নকল, দাম ও ক্যান্ডেল আসল। এখান থেকেই বোঝা যাবে সিগনাল আসলে কতটা কাজের।</p>
     <div class="fields">
       <label><input type="checkbox" id="botOn"> বট চালু</label>
+      <label><input type="checkbox" id="botHold"> টাইমফ্রেম শেষে অটো ক্লোজ (১ মি ট্রেড ১ মিনিটে, ১ ঘ ট্রেড ১ ঘণ্টায়)</label>
       <label><input type="checkbox" id="botShort"> SELL (শর্ট) ট্রেডও নেবে</label>
       <label><input type="checkbox" id="botAI"> শুধু AI পূর্বাভাসের সাথে মিললে</label>
       <label>প্রতি ট্রেডে ঝুঁকি (%)<input type="number" id="botRisk" min="0.1" max="10" step="0.1" inputmode="decimal"></label>
@@ -341,6 +346,9 @@ canvas.spark { width: 100%; height: 70px; display: block; margin-top: 8px; }
 </div>
 
 <script>
+window.addEventListener("error", function (ev) {
+  try { var b = document.getElementById("error"); if (b) { b.textContent = "পাতায় প্রযুক্তিগত সমস্যা: " + (ev.message || "অজানা") + (ev.lineno ? " (লাইন " + ev.lineno + ")" : "") + "। এই লেখাটা আমাকে পাঠান।"; b.hidden = false; } } catch (e) {}
+});
 "use strict";
 /* ================= সেটিংস ================= */
 var TFS = {
@@ -1910,7 +1918,7 @@ function predictEngine(P, IND, M, key, nowMs) {
 
   var target = forming ? lastT : lastT + tfms;
   Object.assign(E, {
-    ok: true, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, edge: edge,
+    ok: true, call: wf.nn[b] >= 30 && edge >= 0.04, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, edge: edge,
     str: st.k, strL: st.l, agree: agree, sigma: sigma, wf: wf, why: why, tally: tally,
     target: target, close: target + tfms, tfms: tfms, openPx: forming ? P.o[n - 1] : null
   });
@@ -1925,7 +1933,7 @@ function engLive(E, livePx, nowMs) {
   var mu0 = E.sigma * normInv(Math.min(0.999, Math.max(0.001, E.p0)));
   var rem = Math.max(1 - f, 1e-4), sd = E.sigma * Math.sqrt(rem);
   var z = (rNow + mu0 * (1 - f)) / sd;
-  var p = Math.min(0.999, Math.max(0.001, normCdf(z)));
+  var p = Math.min(0.85, Math.max(0.15, normCdf(z)));
   var center = livePx * (1 + mu0 * (1 - f)), sp = livePx * sd;
   return {
     f: f, rNow: rNow, p: p, dir: p >= 0.5 ? "up" : "down", open: open,
@@ -1971,7 +1979,7 @@ function trackPred(L, nowMs) {
     if (!rec) {
       rec = {
         k: key, sym: L.base, tf: L.key, target: E.target, close: E.close, seen: now, seenF: lv.f, early: lv.f <= 0.25,
-        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN }, v: [], st: "open"
+        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN, call: !!E.call }, v: [], st: "open"
       };
       arr.push(rec); changed = true;
     }
@@ -1993,13 +2001,14 @@ function trackPred(L, nowMs) {
   return arr;
 }
 function accStats(arr, f) {
-  var o = { n: 0, pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0 };
+  var o = { n: 0, call: [0, 0], pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0 };
   arr.forEach(function (r) {
     if (f && !f(r)) return;
     if (r.st === "open") { o.open++; return; }
     if (r.st !== "done" || r.act === "flat") return;
     var hit = r.pre.dir === r.act ? 1 : 0;
     o.n++; o.pre[0]++; o.pre[1] += hit;
+    if (r.pre.call) { o.call[0]++; o.call[1] += hit; }
     if (r.early) { o.early[0]++; o.early[1] += hit; }
     var bk = o.by[r.pre.str]; if (bk) { bk[0]++; bk[1] += hit; }
     var lastV = r.v[r.v.length - 1];
@@ -2198,7 +2207,7 @@ function drawMap() {
     g.strokeStyle = cPred; g.lineWidth = 2; g.beginPath(); g.moveTo(rxx, rh); g.lineTo(rxx, rl); g.stroke();
     g.beginPath(); g.moveTo(rxx - 3, rh); g.lineTo(rxx + 3, rh); g.moveTo(rxx - 3, rl); g.lineTo(rxx + 3, rl); g.stroke();
     g.restore();
-    pill("NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "%", tx - 10, Math.max(padT + 8, ty - 2), cPred, "#fff", "r");
+    pill(E.call ? "NEXT " + (upP ? "▲ UP " : "▼ DOWN ") + Math.round(pp * 100) + "%" : "NEXT ? অনিশ্চিত", tx - 10, Math.max(padT + 8, ty - 2), cPred, "#fff", "r");
   }
   // হোভার
   if (AI.hover >= s && AI.hover < e) {
@@ -2231,8 +2240,10 @@ function renderPred() {
   if (!E || !E.ok) { box.appendChild(el("p", "small", "পূর্বাভাসের জন্য যথেষ্ট ক্যান্ডেল নেই (কমপক্ষে ~২৫০টা লাগে)।")); return; }
   var lv = E.live, up = lv.dir === "up", pu = lv.p, pd = 1 - lv.p, pp = up ? pu : pd;
   var top = el("div", "predbox");
-  top.appendChild(el("div", "arrow " + (up ? "up" : "dn"), up ? "▲" : "▼"));
-  var tb = el("div", ""); tb.appendChild(el("div", "big " + (up ? "up" : "dn"), "NEXT CANDLE: " + dirTxt(lv.dir)));
+  var cl = !!E.call;
+  top.appendChild(el("div", "arrow " + (cl ? (up ? "up" : "dn") : "nc"), cl ? (up ? "▲" : "▼") : "?"));
+  var tb = el("div", ""); tb.appendChild(el("div", "big " + (cl ? (up ? "up" : "dn") : "nc"), cl ? "NEXT CANDLE: " + dirTxt(lv.dir) : "NEXT CANDLE: অনিশ্চিত ⚪ (কল নয়)"));
+  if (!cl) tb.appendChild(el("div", "small", "ঝোঁক সামান্য " + (up ? "UP" : "DOWN") + " দিকে, কিন্তু ইতিহাসে এমন অবস্থায় সঠিকতা এত কম যে বট কল দিচ্ছে না। এই অবস্থায় ট্রেড না নেওয়াই ভালো।"));
   tb.appendChild(el("div", "small", E.forming ? "চলমান " + TFS[L.key].label + " ক্যান্ডেল কোন রঙে বন্ধ হবে (এখনো চলছে)" : "পরের " + TFS[L.key].label + " ক্যান্ডেল"));
   top.appendChild(tb); box.appendChild(top);
   var bar = el("div", "pbar"), a = el("i", "up"), b = el("i", "dn");
@@ -2281,7 +2292,7 @@ function renderSetups() {
     var wrap = el("div", "su " + (T.bull ? "buy" : "sell") + (SU.primary === T ? " pri" : ""));
     var hd = el("div", "suh"); hd.appendChild(el("b", "", T.side + " সেটআপ")); hd.appendChild(el("span", "small", (SU.primary === T ? "সেরা স্কোর · " : "") + "স্কোর " + Math.round(T.score) + "/100")); wrap.appendChild(hd);
     var dl = el("dl", "kv");
-    kvRow(dl, "Entry", fmt(T.entry)); kvRow(dl, "Stop Loss", fmt(T.sl) + " (" + pct(T.riskPct / 100, 2) + " ঝুঁকি)", "neg");
+    kvRow(dl, T.bull ? "কেনার জোন" : "বেচার জোন", fmt(T.zone.lo) + " – " + fmt(T.zone.hi)); kvRow(dl, "Entry", fmt(T.entry)); kvRow(dl, "Stop Loss", fmt(T.sl) + " (" + pct(T.riskPct / 100, 2) + " ঝুঁকি)", "neg");
     T.tp.forEach(function (p, j) { kvRow(dl, "TP" + (j + 1) + " (RR " + rr(T.rr[j]) + ")", fmt(p), "pos"); });
     kvRow(dl, "অবস্থা", T.status);
     wrap.appendChild(dl);
@@ -2296,7 +2307,7 @@ function renderHist() {
   var L = last, box = $("hsBody"); clearEl(box);
   var arr = readPred().filter(function (r) { return r.sym === L.base; }), wf = readWF();
   var tb = el("table", "tbl"), hr = el("tr", "");
-  ["TF", "যাচাই", "সঠিক", "শুরুর আগের পূর্বাভাস", "ব্যাকটেস্ট"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
+  ["TF", "যাচাই", "সঠিক", "সব পূর্বাভাস", "শুধু কল", "ব্যাকটেস্ট"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
   tb.appendChild(hr);
   TF_BUTTONS.forEach(function (k) {
     var o = accStats(arr, function (r) { return r.tf === k; }), w = wf[L.base + "|" + k];
@@ -2304,6 +2315,7 @@ function renderHist() {
     tr.appendChild(el("td", "", String(o.n)));
     tr.appendChild(el("td", "", o.n ? o.pre[1] + "/" + o.n : "–"));
     tr.appendChild(el("td", "b", o.n >= 1 ? pct(o.pre[1] / o.n, 0) + (o.n < 20 ? " (কম ডেটা)" : "") : "–"));
+    tr.appendChild(el("td", "", o.call[0] ? pct(o.call[1] / o.call[0], 0) + " (" + o.call[0] + ")" : "–"));
     tr.appendChild(el("td", "", w && w.n ? pct(w.hit / w.n, 1) + " (" + w.n + ")" : "–"));
     tb.appendChild(tr);
   });
@@ -2372,7 +2384,7 @@ function aiBuildAnalysis(P, key, nowMs) {
 function aiNP(E) {
   if (!E || !E.ok || !E.live) return { call: false, dir: "up", conf: 0.5, n: 0, pUp: 0.5 };
   var up = E.live.dir === "up", c = up ? E.live.p : 1 - E.live.p;
-  return { call: c >= 0.52, dir: E.live.dir, conf: c, n: E.nbN, pUp: E.live.p };
+  return { call: !!E.call && c >= 0.52, dir: E.live.dir, conf: c, n: E.nbN, pUp: E.live.p };
 }
 
 function aiInit() {
@@ -2447,6 +2459,7 @@ function botRead() {
   if (!(c.risk > 0 && c.risk <= 10)) c.risk = 1;
   if (!(c.minScore >= 0 && c.minScore <= 100)) c.minScore = 55;
   if (c.short === undefined) c.short = true;
+  if (c.hold === undefined) c.hold = true;
   if (c.needAI === undefined) c.needAI = false;
   if (!Array.isArray(o.tr)) o.tr = [];
   return o;
@@ -2457,21 +2470,25 @@ function botRem(t) { var r = 1, j; for (j = 0; j < t.hit; j++) r -= BOT_FR[j]; r
 function botClose(t, why, ts) {
   t.R -= BOT_FEE * t.e / t.rk; t.st = "closed"; t.why = why; t.closeT = ts; t.pnl = t.R * t.riskUsd;
 }
-function botStep(t, c, tfms) {
+function botStep(t, c, tfms, noTime) {
   if (t.st !== "open") return;
-  var d = t.d, rem;
-  if (d > 0 ? c.l <= t.sl : c.h >= t.sl) {
-    rem = botRem(t); t.R += rem * d * (t.sl - t.e) / t.rk; botClose(t, t.hit ? "BE" : "SL", c.t); return;
+  var d = t.d, rem, first = c.t === t.entryT;
+  if (!first) {
+    if (d > 0 ? c.l <= t.sl : c.h >= t.sl) {
+      rem = botRem(t); t.R += rem * d * (t.sl - t.e) / t.rk; botClose(t, t.hit ? "BE" : "SL", c.t); return;
+    }
+    while (t.hit < 3 && (d > 0 ? c.h >= t.tp[t.hit] : c.l <= t.tp[t.hit])) {
+      t.R += BOT_FR[t.hit] * d * (t.tp[t.hit] - t.e) / t.rk; t.hit++; if (t.hit === 1) t.sl = t.e;
+    }
+    if (t.hit >= 3) { botClose(t, "TP3", c.t); return; }
   }
-  while (t.hit < 3 && (d > 0 ? c.h >= t.tp[t.hit] : c.l <= t.tp[t.hit])) {
-    t.R += BOT_FR[t.hit] * d * (t.tp[t.hit] - t.e) / t.rk; t.hit++; if (t.hit === 1) t.sl = t.e;
-  }
-  if (t.hit >= 3) { botClose(t, "TP3", c.t); return; }
-  if ((c.t - t.entryT) / tfms >= BOT_MAXC) { rem = botRem(t); t.R += rem * d * (c.c - t.e) / t.rk; botClose(t, "TIME", c.t); }
+  if (t.exitT) {
+    if (!noTime && c.t >= t.exitT) { rem = botRem(t); t.R += rem * d * (c.c - t.e) / t.rk; botClose(t, "টাইম-শেষ", c.t); }
+  } else if ((c.t - t.entryT) / tfms >= BOT_MAXC) { rem = botRem(t); t.R += rem * d * (c.c - t.e) / t.rk; botClose(t, "TIME", c.t); }
 }
 function botLive(t, L) {            // চলমান ক্যান্ডেল সহ (সংরক্ষণ হয় না)
   var cp = JSON.parse(JSON.stringify(t)), tfms = TFMS[t.tf], cd = L.cd, now = Date.now(), j;
-  for (j = 0; j < cd.length; j++) if (cd[j].t > cp.chk && cd[j].t + tfms > now) botStep(cp, cd[j], tfms);
+  for (j = 0; j < cd.length; j++) if ((cp.v2 ? cd[j].t >= cp.chk : cd[j].t > cp.chk) && cd[j].t + tfms > now) botStep(cp, cd[j], tfms, true);
   cp.u = cp.st === "open" ? cp.R + botRem(cp) * cp.d * (L.S.live - cp.e) / cp.rk : cp.R;
   return cp;
 }
@@ -2482,30 +2499,40 @@ function botStepAll(o, L, now) {
   o.tr.forEach(function (t) {
     if (t.st !== "open" || t.sym !== L.base || t.tf !== L.key) return;
     L.cd.forEach(function (c) {
-      if (t.st === "open" && c.t > t.chk && c.t + tfms <= now) { botStep(t, c, tfms); t.chk = c.t; ch = true; }
+      if (t.st === "open" && (t.v2 ? c.t >= t.chk : c.t > t.chk) && c.t + tfms <= now) { botStep(t, c, tfms); t.chk = t.v2 ? c.t + tfms : c.t; ch = true; }
     });
   });
   return ch;
 }
+var botWhy = {};
 function botEnter(o, L, now) {
-  var c = o.cfg, SU = L.SU, E = L.ENG;
-  if (!c.on || !SU || !SU.primary) return false;
+  var c = o.cfg, SU = L.SU, E = L.ENG, K = L.base + "|" + L.key;
+  function no(r) { botWhy[K] = { r: r, t: now }; return false; }
+  if (!c.on) return no("বট বন্ধ");
+  if (!SU || !SU.primary) return no("কোনো সেটআপ নেই (ডেটা কম বা বাজার অস্পষ্ট)");
   var T = SU.primary, n = L.P.n, lastT = L.P.t[n - 1];
-  if (!T.inZone || T.score < c.minScore || !T.aligned) return false;
-  if (!T.bull && !c.short) return false;
-  if (c.needAI && !(E && E.ok && E.live && T.bull === (E.live.dir === "up"))) return false;
-  if (!(T.risk > 0) || !(T.entry > 0)) return false;
-  if (o.tr.some(function (t) { return t.sym === L.base && t.tf === L.key && (t.st === "open" || t.entryT === lastT); })) return false;
-  var eq = botEquity(o); if (eq < 5) return false;
+  if (!T.inZone) return no("অপেক্ষা: দাম এখনো ভালো " + T.side + " জোনে আসেনি");
+  if (T.score < c.minScore) return no("সেটআপের স্কোর " + Math.round(T.score) + ", কিন্তু লাগে " + c.minScore + "+");
+  if (!T.aligned) return no("সেটআপ বড় ট্রেন্ডের উল্টো, তাই বাদ");
+  if (!T.bull && !c.short) return no("SELL সেটআপ, কিন্তু শর্ট বন্ধ আছে");
+  if (c.needAI && !(E && E.ok && E.live && T.bull === (E.live.dir === "up"))) return no("AI পূর্বাভাসের সাথে মিলছে না");
+  if (!(T.risk > 0) || !(T.entry > 0)) return no("সেটআপের দাম ঠিক নেই");
+  if (o.tr.some(function (t) { return t.sym === L.base && t.tf === L.key && t.st === "open"; })) return no("ট্রেড ইতিমধ্যে চলছে");
+  if (o.tr.some(function (t) { return t.sym === L.base && t.tf === L.key && t.entryT === lastT; })) return no("এই ক্যান্ডেলে ট্রেড নেওয়া হয়ে গেছে");
+  var eq = botEquity(o); if (eq < 5) return no("ডেমো টাকা শেষ");
   var rp = T.risk / T.entry, notional = Math.min(eq, eq * c.risk / 100 / rp);
   o.tr.push({
     id: L.base + "|" + L.key + "|" + now, sym: L.base, tf: L.key, side: T.side, d: T.bull ? 1 : -1, e: T.entry, sl: T.sl, sl0: T.sl,
     tp: T.tp.slice(), rr: T.rr.slice(), hit: 0, R: 0, rk: T.risk, notional: notional, riskUsd: notional * rp, score: Math.round(T.score),
-    labels: T.labels.slice(), entryT: lastT, chk: lastT, openedAt: now, st: "open"
+    labels: T.labels.slice(), entryT: lastT, chk: lastT, openedAt: now, st: "open", v2: true,
+    exitT: c.hold ? ((now - lastT) / TFMS[L.key] < 0.75 ? lastT : lastT + TFMS[L.key]) : 0
   });
+  botWhy[K] = { r: "ট্রেডে ঢুকেছে", t: now };
   return true;
 }
+var botPlan = {};
 function botRun(L, now) {
+  if (L.SU) botPlan[L.base + "|" + L.key] = { t: now, px: L.S.live, buy: L.SU.buy, sell: L.SU.sell, pri: L.SU.primary ? L.SU.primary.side : null };
   var o = botRead(), a = botStepAll(o, L, now), b = botEnter(o, L, now);
   if (a || b) botWrite(o);
 }
@@ -2539,6 +2566,23 @@ function renderBot() {
     if (t.st !== "open") return;
     if (t.sym === L.base && t.tf === L.key) { var lv = botLive(t, L); openHere.push(lv); liveU += lv.u * t.riskUsd; }
   });
+  box.appendChild(el("h3", "", "বট কত দামে কিনবে / বেচবে"));
+  var ulp = el("ul", "plan");
+  TF_BUTTONS.forEach(function (k) {
+    var p = botPlan[L.base + "|" + k], li = el("li", "");
+    li.appendChild(el("b", "", k + (k === L.key ? " (খোলা)" : "") + (p && p.px ? " · এখন দাম " + fmt(p.px) : "")));
+    if (!p) { li.appendChild(el("div", "small", "এখনো স্ক্যান হয়নি")); ulp.appendChild(li); return; }
+    [p.buy, p.sell].forEach(function (T) {
+      if (!T) return;
+      var d = el("div", "pl " + (T.bull ? "buy" : "sell") + (p.pri === T.side ? " pri" : ""));
+      d.textContent = (T.bull ? "🟢 কিনবে (BUY): " : "🔴 বেচবে (SELL): ") + fmt(T.entry) + " দামে" + (T.inZone ? " (দাম এখন জোনে, ঢোকার উপযোগী)" : " (দাম " + fmt(T.zone.lo) + "–" + fmt(T.zone.hi) + " জোনে এলে)") +
+        " · SL " + fmt(T.sl) + " · লক্ষ্য " + T.tp.map(fmt).join(" / ") + (p.pri === T.side ? " · ★ বেশি স্কোর" : "");
+      li.appendChild(d);
+    });
+    ulp.appendChild(li);
+  });
+  box.appendChild(ulp);
+  box.appendChild(el("p", "small", "বট কেনে বা বেচে শুধু তখন, যখন দাম ওই জোনে ঢোকে আর স্কোর/ট্রেন্ড মেলে। দাম বদলালে এই সংখ্যাও বদলায়। এগুলো নকল টাকার ট্রেড, আসল কেনাবেচা নয়।"));
   var dl = el("dl", "kv");
   kvRow(dl, "ডেমো ব্যালেন্স (বন্ধ ট্রেড)", eq.toFixed(2) + " (শুরু " + o.cfg.start + ")");
   kvRow(dl, "মোট লাভ/লোকসান", botMoney(eq - o.cfg.start) + " (" + (((eq / o.cfg.start) - 1) * 100).toFixed(1) + "%)", eq >= o.cfg.start ? "pos" : "neg");
@@ -2562,6 +2606,10 @@ function renderBot() {
     tb.appendChild(tr);
   });
   box.appendChild(tb);
+  box.appendChild(el("h3", "", "বটের এখনকার অবস্থা"));
+  var ulw = el("ul", "rs");
+  TF_BUTTONS.forEach(function (k) { var w = botWhy[L.base + "|" + k]; ulw.appendChild(el("li", "", k + ": " + (w ? w.r + " (" + tmStr(w.t) + ")" : "এখনো স্ক্যান হয়নি"))); });
+  box.appendChild(ulw);
   box.appendChild(el("h3", "", "এখন চলমান ট্রেড (" + sp0text(L) + ")"));
   if (!openHere.length) box.appendChild(el("p", "small", o.cfg.on ? "কোনো ট্রেড খোলা নেই। বট অপেক্ষা করছে: দাম কোনো ভালো জোনে এলে, স্কোর " + o.cfg.minScore + "+ ও ট্রেন্ডের পক্ষে হলে ঢুকবে।" : "বট বন্ধ আছে।"));
   openHere.forEach(function (t) {
@@ -2586,7 +2634,7 @@ function renderBot() {
     var cv = document.createElement("canvas"); cv.className = "spark"; box.appendChild(cv);
     setTimeout(function () { botSpark(cv, o); }, 0);
   }
-  box.appendChild(el("p", "small", "নিয়ম: বট শুধু আসল দামে নকল টাকা দিয়ে ট্রেড করে। ঝুঁকি প্রতি ট্রেডে " + o.cfg.risk + "%, TP1-এ ৫০%, TP2-এ ৩০%, TP3-এ বাকিটা বেরোয়; TP1 লাগলে SL এন্ট্রিতে সরে যায়। এক ক্যান্ডেলে SL ও TP দুটোই ছুঁলে SL আগে ধরা হয় (খারাপ ধরে নেওয়া)। ফি ০.২% কাটা হয়। স্লিপেজ ধরা হয়নি, আসলে ফল এর চেয়ে একটু খারাপ হতে পারে। বট শুধু পাতা খোলা থাকলে নতুন ট্রেডে ঢোকে। খোলা কয়েনের সব টাইমফ্রেম (১ মি থেকে ১ দিন) একটা একটা করে নিজে স্ক্যান করে ট্রেড নেয়। স্পটে শর্ট (SELL) করা যায় না, SELL মানে ফিউচারস-ধরনের নকল ট্রেড।"));
+  box.appendChild(el("p", "small", "নিয়ম: বট শুধু আসল দামে নকল টাকা দিয়ে ট্রেড করে। ঝুঁকি প্রতি ট্রেডে " + o.cfg.risk + "%, " + (o.cfg.hold ? "প্রতিটা ট্রেড নিজের টাইমফ্রেমের ক্যান্ডেল শেষে অটো বন্ধ হয় (SL/TP আগে লাগলে আগেই বন্ধ), " : "") + " TP1-এ ৫০%, TP2-এ ৩০%, TP3-এ বাকিটা বেরোয়; TP1 লাগলে SL এন্ট্রিতে সরে যায়। এক ক্যান্ডেলে SL ও TP দুটোই ছুঁলে SL আগে ধরা হয় (খারাপ ধরে নেওয়া)। ফি ০.২% কাটা হয়। স্লিপেজ ধরা হয়নি, আসলে ফল এর চেয়ে একটু খারাপ হতে পারে। বট শুধু পাতা খোলা থাকলে নতুন ট্রেডে ঢোকে। খোলা কয়েনের সব টাইমফ্রেম (১ মি থেকে ১ দিন) একটা একটা করে নিজে স্ক্যান করে ট্রেড নেয়। স্পটে শর্ট (SELL) করা যায় না, SELL মানে ফিউচারস-ধরনের নকল ট্রেড।"));
 }
 function botSpark(cv, o) {
   var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
@@ -2609,7 +2657,7 @@ function botDraw(g, L, s, e, X, Y, cBuy, cSell, cFg) {
     var v = t.st === "open" ? botLive(t, L) : t, closed = v.st === "closed";
     var j = closed ? botEntryIdx(P, v.closeT) : n - 1; if (j < 0) j = n - 1;
     if (j < s) return;
-    var x0 = X(Math.max(i, s)) - cw / 2, x1 = X(j) + cw / 2 + (closed ? 0 : cw * 2);
+    var x0 = X(Math.max(i, s)) - cw / 2, x1 = Math.max(X(j) + cw / 2 + (closed ? 0 : cw * 2), x0 + 34);
     var far = t.d > 0 ? Math.max.apply(null, t.tp) : Math.min.apply(null, t.tp);
     var win = v.R > 0, cc = t.d > 0 ? cBuy : cSell;
     g.globalAlpha = 0.11; g.fillStyle = cBuy; g.fillRect(x0, Math.min(Y(t.e), Y(far)), x1 - x0, Math.abs(Y(far) - Y(t.e)));
@@ -2647,11 +2695,11 @@ function botScan() {
   var chain = Promise.resolve();
   todo.forEach(function (k) {
     chain = chain.then(function () {
-      return new Promise(function (ok) { setTimeout(ok, 1500); });
+      return new Promise(function (ok) { setTimeout(ok, 2500); });
     }).then(function () {
       if (!last || last.base !== base) return;
       botScanAt[base + "|" + k] = Date.now();
-      return fetchCandles(base, k).then(function (cd) {
+      return (source === "kucoin" ? fetchKucoin(base, TFS[k]) : fetchBinance(base, TFS[k])).then(function (cd) {
         var P = compute(cd), S = analyzeLatest(P), A = aiBuildAnalysis(P, k, Date.now());
         if (A.ENG.ok) A.ENG.live = engLive(A.ENG, S.live, Date.now());
         var L2 = { base: base, key: k, cd: cd, P: P, S: S, ENG: A.ENG, SU: A.SU, IND: A.IND, M: A.M };
@@ -2664,14 +2712,14 @@ function botScan() {
 }
 function botInit() {
   var o = botRead(), c = o.cfg;
-  $("botOn").checked = c.on; $("botRisk").value = c.risk; $("botMin").value = c.minScore; $("botShort").checked = c.short; $("botAI").checked = c.needAI; $("botStart").value = c.start;
+  $("botOn").checked = c.on; $("botRisk").value = c.risk; $("botMin").value = c.minScore; $("botShort").checked = c.short; $("botHold").checked = c.hold; $("botAI").checked = c.needAI; $("botStart").value = c.start;
   function sv() {
-    var q = botRead(); q.cfg.on = $("botOn").checked; q.cfg.short = $("botShort").checked; q.cfg.needAI = $("botAI").checked;
+    var q = botRead(); q.cfg.on = $("botOn").checked; q.cfg.short = $("botShort").checked; q.cfg.hold = $("botHold").checked; q.cfg.needAI = $("botAI").checked;
     var r = parseFloat($("botRisk").value), m = parseFloat($("botMin").value);
     if (r > 0 && r <= 10) q.cfg.risk = r; if (m >= 0 && m <= 100) q.cfg.minScore = m;
     botWrite(q); if (last) { try { renderBot(); redrawMap(); } catch (e) {} }
   }
-  ["botOn", "botShort", "botAI"].forEach(function (id) { $(id).addEventListener("change", function () { sv(); if (last && $("botOn").checked) { try { botRun(last, Date.now()); renderBot(); } catch (e) {} } }); });
+  ["botOn", "botShort", "botAI", "botHold"].forEach(function (id) { $(id).addEventListener("change", function () { sv(); if (last && $("botOn").checked) { try { botRun(last, Date.now()); renderBot(); } catch (e) {} } }); });
   ["botRisk", "botMin"].forEach(function (id) { $(id).addEventListener("change", sv); });
   var armed = null;
   $("botReset").addEventListener("click", function () {
