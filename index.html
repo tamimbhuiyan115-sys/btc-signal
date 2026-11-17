@@ -79,6 +79,9 @@ input[type=text], input[type=number] {
 .dot.on { background: var(--buy); }
 .small { font-size: 0.85rem; color: var(--muted); }
 
+.su.off { opacity: 0.55; }
+details.ob { border-top: 1px solid var(--line); padding: 6px 0; }
+details.ob summary { cursor: pointer; font-weight: 600; font-size: 13px; line-height: 1.5; }
 .verdict { border-radius: 16px; padding: 18px 20px; border: 1px solid var(--line); background: var(--surface); }
 .verdict .label { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .verdict .word { font-size: 2.8rem; font-weight: 800; line-height: 1.1; margin: 2px 0 6px; letter-spacing: -0.02em; }
@@ -205,6 +208,7 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
   </div>
 
   <div class="warn" id="srcWarn" hidden></div>
+  <div class="small" id="dqWarn" hidden></div>
   <div id="error" class="error" hidden></div>
   <div id="banner" class="banner" hidden></div>
 
@@ -230,7 +234,18 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
     <div class="chips"><button class="chip" id="mapZin" type="button">＋ জুম</button><button class="chip" id="mapZout" type="button">－ জুম</button><button class="chip" id="mapReset" type="button">⟲ রিসেট</button><button class="chip" id="mapFull" type="button">⛶ বড় পর্দা</button></div>
     <canvas id="mapChart"></canvas>
     <div class="readout" id="mapReadout"></div>
+    <div id="chartVerdict"></div>
     <div class="small">ক্যান্ডেলের উপর অটো আঁকা: সবুজ/লাল জোন (Demand/Supply), Order Block, FVG, S/R লাইন, Fibonacci (0.382/0.5/0.618/0.786), HH/HL/LH/LL, BOS/CHOCH, Liquidity Sweep, Double Top/Bottom, Head &amp; Shoulders। সবুজ ঘর লাভের জোন, লাল ঘর স্টপ-লস জোন। নীল ▲/▼ পরের ক্যান্ডেলের পূর্বাভাস। এসব নিয়ম-ভিত্তিক গাণিতিক শনাক্তকরণ, ভবিষ্যদ্বাণী নয়।</div>
+  </section>
+
+  <section class="card" id="intelCard" hidden>
+    <h2>চার্ট অবজেক্টের ব্যাখ্যা (কেন আঁকা হলো)</h2>
+    <div id="intelBody"></div>
+  </section>
+
+  <section class="card" id="mtfCard" hidden>
+    <h2>মাল্টি-টাইমফ্রেম তুলনা ও চূড়ান্ত সিদ্ধান্ত</h2>
+    <div id="mtfBody"></div>
   </section>
 
   <section class="card" id="pdCard" hidden>
@@ -244,7 +259,7 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
   </section>
 
   <section class="card" id="botCard" hidden>
-    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ১৯</h2>
+    <h2>অটো ডেমো বট (নকল টাকা, আসল দাম) · সংস্করণ ২৩</h2>
     <p class="small">বট নিজে চার্ট ম্যাপ করে, ভালো সেটআপ পেলে Entry/SL/TP সহ ট্রেডে ঢোকে আর নিজেই বের হয়। টাকা নকল, দাম ও ক্যান্ডেল আসল। এখান থেকেই বোঝা যাবে সিগনাল আসলে কতটা কাজের।</p>
     <div class="fields">
       <label><input type="checkbox" id="botOn"> বট চালু</label>
@@ -338,6 +353,7 @@ ul.plan { list-style: none; padding: 0; margin: 0 0 6px; } ul.plan li { padding:
       <label><input type="checkbox" id="strict" checked> কঠোর মোড: ইতিহাসে ৫৫%-এর কম সঠিক বা ২০ বারের কম আসা সিগনাল দেবে না</label>
       <label><input type="checkbox" id="rec" checked> BUY/SELL সিগনাল ট্র্যাকারে নিজে রেকর্ড করা</label>
     </div>
+    <div class="opts"><label><input type="checkbox" id="fbOn"> KuCoin ব্যর্থ হলে Binance-এর ডেটা ব্যবহার (বন্ধ থাকলে স্পষ্ট এরর দেখাবে। চালু থাকলে ডেটার উৎস আলাদা চিহ্নিত থাকে ও KuCoin-এর ইতিহাসের সাথে মেশানো হয় না)</label></div>
     <div class="fields" style="grid-template-columns:1fr; margin-top:12px">
       <label>KuCoin প্রক্সি লিংক (ঐচ্ছিক, KuCoin-এর আসল দামের জন্য)
         <input type="text" id="proxy" placeholder="https://kucoin-proxy.আপনার-নাম.workers.dev" inputmode="url" autocapitalize="none" autocomplete="off" spellcheck="false">
@@ -366,7 +382,7 @@ var TFS = {
   "1w":  { label: "১ সপ্তাহ", ku: "1week", bn: "1w",  htf: null,  refresh: 300, h: 4 }
 };
 var TF_BUTTONS = ["1m", "5m", "15m", "1h", "4h", "1d"];
-var FEE = 0.002;          // ক্রয়-বিক্রয় মিলিয়ে আনুমানিক ফি
+var FEE = 0.0024;         // পুরো ট্রেডের খরচ: ফি ০.১%×২ + স্প্রেড ০.০২% + স্লিপেজ ০.০১%×২ (= costRT())
 var MAX_SCORE = 8;
 var $ = function (id) { return document.getElementById(id); };
 
@@ -393,11 +409,15 @@ function kuBase() {
   var p = ($("proxy").value || "").trim().replace(/\/+$/, "");
   return /^https:\/\/[^\s]+$/.test(p) ? p : "https://api.kucoin.com";
 }
+var kuCoolUntil = 0;
+function allowFB() { var e = $("fbOn"); return !!(e && e.checked); }
+function waitCool() { var w = kuCoolUntil - Date.now(); return w > 0 ? new Promise(function (ok) { setTimeout(ok, Math.min(w, 20000)); }) : Promise.resolve(); }
 function fetchKucoin(base, tf, retried) {
   return fetchKucoinOnce(base, tf).catch(function (e) {
-    // 429 = অল্প সময়ে অনেক অনুরোধ। একটু থেমে একবার আবার চেষ্টা
-    if (!retried && e && /429/.test(e.message)) {
-      return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return fetchKucoin(base, tf, true); });
+    // 429 = অল্প সময়ে অনেক অনুরোধ। একটু থেমে একবার আবার চেষ্টা, তারপরও হলে ২০ সেকেন্ড বিরতি (রেট-লিমিট মানা)
+    if (e && /429/.test(e.message)) {
+      kuCoolUntil = Date.now() + 20000;
+      if (!retried) return new Promise(function (ok) { setTimeout(ok, 2000); }).then(function () { return fetchKucoin(base, tf, true); });
     }
     throw e;
   });
@@ -410,30 +430,97 @@ function fetchHtf(base, key) {
 }
 function fetchKucoinOnce(base, tf) {
   return getJSON(kuBase() + "/api/v1/market/candles?type=" + tf.ku + "&symbol=" + base).then(function (j) {
-    if (j.code !== "200000" || !Array.isArray(j.data) || j.data.length < 60) throw new Error("KuCoin ডেটা নেই");
-    return j.data.slice(0, 1000).reverse().map(function (r) {
+    if (!j || j.code !== "200000" || !Array.isArray(j.data) || j.data.length < 60) throw new Error("KuCoin ডেটা নেই");
+    var arr = j.data.slice(0, 1000).map(function (r) {
       return { t: +r[0] * 1000, o: +r[1], c: +r[2], h: +r[3], l: +r[4], v: +r[5] };
     });
+    arr.src = "KuCoin"; arr.fetchedAt = Date.now();
+    return arr;
   });
 }
 function fetchBinance(base, tf) {
   return getJSON("https://data-api.binance.vision/api/v3/klines?symbol=" + base.replace("-", "") + "&interval=" + tf.bn + "&limit=1000").then(function (j) {
     if (!Array.isArray(j) || j.length < 60) throw new Error("Binance ডেটা নেই");
-    return j.map(function (r) { return { t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }; });
+    var arr = j.map(function (r) { return { t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }; });
+    arr.src = "Binance"; arr.fetchedAt = Date.now();
+    return arr;
   });
 }
 var kuErr = "", kuFailAt = 0;
+/* শুধু KuCoin। ব্যর্থ হলে স্পষ্ট এরর; Binance শুধু ব্যবহারকারী সেটিংসে চালু করলে, আর তখন ডেটায় উৎসের নাম বসানো থাকে। */
 function fetchCandles(base, key) {
   var tf = TFS[key];
-  if (source === "binance" && Date.now() - kuFailAt > 300000) source = "kucoin";   // ৫ মিনিট পর আবার KuCoin চেষ্টা
-  if (source === "kucoin") {
-    return fetchKucoin(base, tf).catch(function (e) {
-      source = "binance"; kuFailAt = Date.now();
-      kuErr = e && e.message ? e.message : "অজানা এরর";
-      return fetchBinance(base, tf);
-    });
+  return waitCool().then(function () { return fetchKucoin(base, tf); }).then(function (cd) { kuErr = ""; return cd; }, function (e) {
+    kuErr = e && e.message ? e.message : "অজানা এরর"; kuFailAt = Date.now();
+    if (!allowFB()) throw new Error("KuCoin থেকে ডেটা আনা যায়নি (" + kuErr + "). অন্য এক্সচেঞ্জের বা নকল ডেটা দিয়ে চালানো হয়নি। সেটিংসে Binance ফলব্যাক চালু করা যায়, তখন ডেটার উৎস আলাদা করে দেখানো হবে");
+    return fetchBinance(base, tf);
+  });
+}
+
+/* ================= ক্যান্ডেল যাচাই ================= */
+function validateCandles(cdIn, key, now) {
+  var tfms = TFMS[key], R = { dups: 0, bad: 0, unsorted: 0, gaps: 0, recentGaps: 0, misaligned: 0, stale: false, block: false, issues: [], notes: [] };
+  var i, c, asc = 0, desc = 0, tmp = [];
+  for (i = 0; i < cdIn.length; i++) {
+    c = cdIn[i];
+    if (i) { if (c.t < cdIn[i - 1].t) asc++; if (c.t > cdIn[i - 1].t) desc++; }
+    tmp.push(c);
   }
-  return fetchBinance(base, tf);
+  R.unsorted = Math.min(asc, desc);      // KuCoin নতুন থেকে পুরোনো ক্রমে পাঠায়, সেটা ত্রুটি নয়; শুধু মিশ্র ক্রম ত্রুটি
+  tmp.sort(function (a, b) { return a.t - b.t; });
+  var out = [], recentBad = 0;
+  for (i = 0; i < tmp.length; i++) {
+    c = tmp[i];
+    if (out.length && out[out.length - 1].t === c.t) { R.dups++; out.pop(); }          // একই সময়ের দুই ক্যান্ডেল: পরেরটা রাখা
+    var okc = isFinite(c.t) && isFinite(c.o) && isFinite(c.h) && isFinite(c.l) && isFinite(c.c) && isFinite(c.v) &&
+      c.o > 0 && c.h > 0 && c.l > 0 && c.c > 0 && c.v >= 0 &&
+      c.h >= Math.max(c.o, c.c) * (1 - 1e-9) && c.l <= Math.min(c.o, c.c) * (1 + 1e-9) && c.h >= c.l;
+    if (!okc) { R.bad++; if (i >= tmp.length - 100) recentBad++; continue; }
+    out.push(c);
+  }
+  var n = out.length;
+  for (i = 1; i < n; i++) {
+    var d = out[i].t - out[i - 1].t;
+    if (d > tfms * 1.5 && d < tfms * 1e6) { var miss = Math.round(d / tfms) - 1; R.gaps += miss; if (i >= n - 100) R.recentGaps += miss; }
+  }
+  if (key !== "1w") for (i = Math.max(0, n - 100); i < n; i++) if (out[i].t % tfms !== 0) R.misaligned++;
+  var lastT = n ? out[n - 1].t : 0, age = now - lastT;
+  R.lastT = lastT; R.ageSec = Math.round(age / 1000); R.n = n; R.cd = out;
+  if (n < 60) { R.block = true; R.issues.push("যথেষ্ট ক্যান্ডেল নেই (" + n + "টা)"); }
+  if (age > tfms * 2 + 90000) { R.stale = true; R.block = true; R.issues.push("ডেটা পুরোনো: শেষ ক্যান্ডেল " + fmtDur(Math.round(age / 1000)) + " আগের"); }
+  if (lastT > now + 120000) { R.block = true; R.issues.push("ক্যান্ডেলের সময় ভবিষ্যতের (ঘড়ি বা ডেটা সমস্যা)"); }
+  if (recentBad > 0) { R.block = true; R.issues.push("শেষ ১০০ ক্যান্ডেলে " + recentBad + "টা ভুল (OHLC অসঙ্গত) ক্যান্ডেল"); }
+  if (R.recentGaps >= 3) { R.block = true; R.issues.push("শেষ ১০০ ক্যান্ডেলে " + R.recentGaps + "টা ক্যান্ডেল অনুপস্থিত"); }
+  else if (R.recentGaps > 0) R.notes.push(R.recentGaps + "টা অনুপস্থিত ক্যান্ডেল (সামান্য)");
+  if (R.dups) R.notes.push(R.dups + "টা ডুপ্লিকেট বাদ");
+  if (R.unsorted) R.notes.push("ক্রম ঠিক করা হয়েছে");
+  if (R.bad && !recentBad) R.notes.push(R.bad + "টা পুরোনো ভুল ক্যান্ডেল বাদ");
+  if (R.misaligned) R.notes.push(R.misaligned + "টা ক্যান্ডেলের সময় টাইমফ্রেমের সীমায় মেলেনি");
+  out.src = cdIn.src; out.fetchedAt = cdIn.fetchedAt;
+  return R;
+}
+function dqText(L) {
+  var D = L.DQ; if (!D) return "";
+  return D.block ? "🚫 ডেটা অবিশ্বস্ত: " + D.issues.join("; ") + "। নতুন পূর্বাভাস ও বট-ট্রেড বন্ধ।" : "✅ ক্যান্ডেল যাচাই ঠিক (" + D.n + "টা)" + (D.notes.length ? " · ⚠ " + D.notes.join(", ") : "");
+}
+/* এক টাইমফ্রেমের পুরো বিশ্লেষণ (যাচাই + ইন্ডিকেটর + AI), মূল রান ও বটের স্ক্যান দুটোই এটা ব্যবহার করে */
+function analyzeTF(base, key, raw, now) {
+  var DQ = validateCandles(raw, key, now), cd = DQ.cd;
+  var L = { base: base, key: key, DQ: DQ, src: raw.src || "KuCoin", fetchedAt: raw.fetchedAt || now, cd: cd, A: null };
+  L.P = compute(cd); L.S = analyzeLatest(L.P);
+  if (!DQ.block) {
+    try {
+      // শেষ ক্যান্ডেল এখনো চলমান হলে বিশ্লেষণ/পূর্বাভাস শুধু বন্ধ ক্যান্ডেল দিয়ে; চলমানটা আলাদা (fc)
+      var nC = cd.length, fcnd = nC && now < cd[nC - 1].t + TFMS[key] ? cd[nC - 1] : null;
+      var Pc = fcnd ? compute(cd.slice(0, nC - 1)) : L.P;
+      var A = aiBuildAnalysis(Pc, key, now, fcnd, L.S.live);
+      A.ENG.exch = L.src; L.forming = !!fcnd;
+      if (A.ENG.ok) A.ENG.live = engLive(A.ENG, L.S.live, now); L.A = A;
+    } catch (ex) { L.A = null; if (window.console) console.error(ex); }
+  }
+  if (L.A) { L.IND = L.A.IND; L.M = L.A.M; L.ENG = L.A.ENG; L.SU = L.A.SU; }
+  try { mtfStore(L); L.U = unifiedSignal(L); } catch (ex) { if (window.console) console.error(ex); }
+  return L;
 }
 
 /* ================= ইন্ডিকেটর ================= */
@@ -564,6 +651,188 @@ function finalDecision(S, H) {
   return { f: f, note: note };
 }
 
+/* ================= মাল্টি-টাইমফ্রেম ও চূড়ান্ত সিগনাল ইঞ্জিন ================= */
+var mtfCache = {}, mtfScanning = false, MTF_KEYS = ["1m", "5m", "15m", "1h", "4h", "1d"], MIN_RR = 1.5;
+/* প্রতিটা টাইমফ্রেম নিজের ডেটায় আলাদা বিশ্লেষণ; এখানে শুধু তার সারসংক্ষেপ রাখা হয় */
+function mtfSummary(L) {
+  var s = { key: L.key, src: L.src, ok: false, at: L.fetchedAt };
+  if (!L.DQ || L.DQ.block || !L.A || !L.ENG || !L.ENG.ok || !L.M || !L.M.ok) { s.err = L.DQ && L.DQ.block ? (L.DQ.issues[0] || "ডেটা অবিশ্বস্ত") : "ডেটা কম"; return s; }
+  var P = L.P, ci = P.n - 1 - (L.forming ? 1 : 0), c = P.c[ci], px = L.S.live;
+  var st = L.M.trend > 0 ? 1 : L.M.trend < 0 ? -1 : 0;
+  var em = (P.e9[ci] > P.e21[ci] ? 1 : -1) * 0.34 + (P.e21[ci] > P.e50[ci] ? 1 : -1) * 0.33 + (c > P.e200[ci] ? 1 : -1) * 0.33;
+  var mh = P.hist[ci] > 0 ? 1 : -1, adx = P.adx[ci], ts = 0.4 * st + 0.4 * em + 0.2 * mh;
+  s.trend = (isFinite(adx) && adx < 18 && Math.abs(ts) < 0.7) ? "side" : ts > 0.25 ? "up" : ts < -0.25 ? "down" : "side";
+  s.ts = ts; s.adx = adx; s.rsi = P.rsi[ci]; s.struct = st; s.p0 = L.ENG.p0; s.dirN = L.ENG.dirN; s.call = !!L.ENG.call; s.px = px;
+  var lv = [];
+  (L.M.srShow || []).forEach(function (z) { lv.push(z.p); });
+  (L.M.demand || []).concat(L.M.obBull || []).forEach(function (z) { lv.push(z.hi); });
+  (L.M.supply || []).concat(L.M.obBear || []).forEach(function (z) { lv.push(z.lo); });
+  s.sup = null; s.res = null;
+  lv.forEach(function (p) { if (p < px && (s.sup === null || p > s.sup)) s.sup = p; if (p > px && (s.res === null || p < s.res)) s.res = p; });
+  s.ok = true; return s;
+}
+function mtfStore(L) { mtfCache[L.base + "|" + L.key] = { at: Date.now(), s: mtfSummary(L) }; }
+function mtfFresh(c, k) { return c && Date.now() - c.at <= Math.max(300, TFS[k].refresh * 4) * 1000; }
+function mtfGet(base, key, src) { var c = mtfCache[base + "|" + key]; if (!c || !mtfFresh(c, key)) return null; if (c.s.src && src && c.s.src !== src) return null; return c.s; }
+
+/* একটাই চূড়ান্ত সিদ্ধান্ত: BUY / SELL / NO TRADE */
+function unifiedSignal(L) {
+  var U = { decision: "NO TRADE", side: null, lean: null, score: 0, pros: [], blockers: [], cautions: [], plan: null, ver: MODEL_VER, htf: null, conflicts: [] };
+  var E = L.ENG;
+  if (L.DQ && L.DQ.block) { U.blockers.push("ডেটা অবিশ্বস্ত/পুরোনো — নতুন সিগনাল বন্ধ"); U.summary = "NO TRADE: " + U.blockers[0]; return U; }
+  if (!E || !E.ok || !E.live || !L.M || !L.M.ok) { U.blockers.push("ডেটা কম, পূর্বাভাস তৈরি হয়নি"); U.summary = "NO TRADE: " + U.blockers[0]; return U; }
+  var lv = E.live, side = lv.dir === "up" ? "BUY" : "SELL", sg = lv.dir === "up" ? 1 : -1, pSide = lv.dir === "up" ? lv.p : 1 - lv.p;
+  U.lean = { side: side, p: pSide };
+  var score = 50 + E.edge * 400;
+  if (lv.dirN === "neutral") U.blockers.push("পূর্বাভাস NEUTRAL (UP/DOWN প্রায় ৫০/৫০) — দিক নেই");
+  else U.pros.push("AI পূর্বাভাস " + side + " " + Math.round(pSide * 100) + "%");
+  if (!E.call) U.blockers.push("ইতিহাসে এমন অবস্থায় সঠিকতার প্রমাণ যথেষ্ট নয় (নমুনা " + E.nbN + ", এজ " + (E.edge * 100).toFixed(1) + "%)");
+  else U.pros.push("ইতিহাসে একই অবস্থায় " + E.nbN + " বারের প্রমাণ আছে");
+  if (lv.f > 0.8) U.blockers.push("ক্যান্ডেলের ৮০%-এর বেশি পার — নতুন ক্যান্ডেলের অপেক্ষা");
+  var tech = L.S && L.S.decision;
+  if (tech && tech !== "HOLD") {
+    if (tech !== side) { U.blockers.push("ইন্ডিকেটর স্কোর বিপরীত দিকে (" + tech + ", স্কোর " + L.S.score + ") — AI-এর সাথে সংঘর্ষ"); U.conflicts.push("AI " + side + " ↔ ইন্ডিকেটর " + tech); }
+    else { score += 4; U.pros.push("ইন্ডিকেটর স্কোর একই দিকে (" + L.S.score + ")"); }
+  }
+  var stc = L.M.trend * sg;
+  if (stc > 0) { score += 5; U.pros.push("মার্কেট স্ট্রাকচার (HH/HL/BOS) একই দিকে"); }
+  else if (stc < 0) { score -= 10; U.cautions.push("মার্কেট স্ট্রাকচার উল্টো দিকে"); }
+  // উচ্চ টাইমফ্রেম: প্রেক্ষাপট দেয়, একা সিদ্ধান্ত উল্টায় না — তবে স্ট্রাকচারও উল্টো হলে দুইয়ে মিলে থামায়
+  var hk = TFS[L.key].htf, hs = hk ? mtfGet(L.base, hk, L.src) : null;
+  if (hs && hs.ok) {
+    U.htf = { key: hk, trend: hs.trend };
+    var ho = (hs.trend === "up" && sg < 0) || (hs.trend === "down" && sg > 0), ha = (hs.trend === "up" && sg > 0) || (hs.trend === "down" && sg < 0);
+    if (ho) { score -= 12; U.cautions.push("উচ্চ টাইমফ্রেম (" + TFS[hk].label + ") উল্টো ট্রেন্ডে"); U.conflicts.push(L.key + " " + side + " ↔ " + hk + " " + (hs.trend === "up" ? "UP" : "DOWN")); if (stc < 0) U.blockers.push("উচ্চ টাইমফ্রেম ও মার্কেট স্ট্রাকচার — দুটোই উল্টো দিকে"); }
+    else if (ha) { score += 8; U.pros.push("উচ্চ টাইমফ্রেম (" + TFS[hk].label + ") একই ট্রেন্ডে"); }
+    else U.cautions.push("উচ্চ টাইমফ্রেম (" + TFS[hk].label + ") সাইডওয়েজ — প্রেক্ষাপট নিরপেক্ষ");
+  } else U.cautions.push("উচ্চ টাইমফ্রেমের ডেটা এখনো আসেনি, প্রেক্ষাপট ছাড়াই বিচার");
+  var adx = L.S && L.S.adx; if (isFinite(adx) && adx >= 22 && stc > 0) score += 4;
+  // চার্টের দৃশ্যমান কাঠামো (S/R, ট্রেন্ডলাইন, জোন, ব্রেকআউট, প্রাইস অ্যাকশন) বনাম AI
+  var cb = L.M.intel && L.M.intel.bias;
+  if (cb) {
+    U.chart = cb;
+    if (cb.verdict === "NO TRADE") U.cautions.push("চার্ট কাঠামো নিরপেক্ষ/রেঞ্জ (পক্ষপাত " + cb.bias.toFixed(2) + ")");
+    else if (cb.verdict === side) { score += 6; U.pros.push("চার্ট কাঠামো একই দিকে (" + cb.verdict + ", পক্ষপাত " + cb.bias.toFixed(2) + ")"); }
+    else { U.blockers.push("চার্ট কাঠামো " + cb.verdict + " বলছে, AI পূর্বাভাস " + side + " — মেলেনি, জোর করে ট্রেড নয়"); U.conflicts.push("চার্ট " + cb.verdict + " ↔ AI " + side); }
+  }
+  // ঝুঁকি/ফল
+  var pl = aiPlan(L), rp = pl.side ? pl.risk / pl.entry : NaN, cost = costRT();
+  if (pl.side) {
+    if (!(rp >= 0.0005 && rp <= 0.05)) U.blockers.push("স্টপ-লস দূরত্ব অবৈধ (" + (rp * 100).toFixed(2) + "%) — ০.০৫%–৫% এর বাইরে");
+    if (rp < cost) U.blockers.push("লক্ষ্য খরচের চেয়ে ছোট: ঝুঁকি " + (rp * 100).toFixed(2) + "% < ফি+স্প্রেড+স্লিপেজ " + (cost * 100).toFixed(2) + "%");
+    else if (rp < 1.5 * cost) U.cautions.push("খরচ লাভের বড় অংশ খেয়ে নেবে (ঝুঁকি " + (rp * 100).toFixed(2) + "% বনাম খরচ " + (cost * 100).toFixed(2) + "%)");
+    if (pl.rr[1] < MIN_RR) U.blockers.push("RR " + pl.rr[1] + " < সর্বনিম্ন " + MIN_RR);
+    var barrier = null;
+    (L.M.srShow || []).forEach(function (z) { if (sg > 0 ? z.p > pl.entry : z.p < pl.entry) { var d = Math.abs(z.p - pl.entry); if (barrier === null || d < barrier) barrier = d; } });
+    if (barrier !== null && barrier < pl.risk) U.blockers.push("TP1-এর আগেই " + (sg > 0 ? "রেজিস্ট্যান্স" : "সাপোর্ট") + " (" + (barrier / pl.risk).toFixed(2) + "R দূরে) — RR নষ্ট");
+  }
+  if (L.fin0 && L.fin0.gate && L.fin0.raw === side) U.blockers.push("কড়া মোড: " + L.fin0.gate);
+  U.score = Math.max(0, Math.min(100, Math.round(score)));
+  // চার্ট/মাল্টি-টাইমফ্রেম সংঘর্ষ তালিকা
+  MTF_KEYS.forEach(function (k) {
+    if (k === L.key) return; var s = mtfGet(L.base, k, L.src);
+    if (s && s.ok && ((s.trend === "up" && sg < 0) || (s.trend === "down" && sg > 0))) { var t = L.key + " " + side + " ↔ " + k + " " + (s.trend === "up" ? "UP" : "DOWN"); if (U.conflicts.indexOf(t) < 0) U.conflicts.push(t); }
+  });
+  if (!U.blockers.length) { U.decision = side; U.side = side; U.plan = pl; }
+  var bits = U.decision === "NO TRADE" ? U.blockers.slice(0, 3) : U.pros.slice(0, 3);
+  U.summary = U.decision + (U.decision === "NO TRADE" ? " — ট্রেড নয়: " : " — কারণ: ") + bits.join("; ") + (U.decision !== "NO TRADE" && U.cautions.length ? ". সাবধানতা: " + U.cautions.slice(0, 2).join("; ") : "");
+  return U;
+}
+/* পুরোনো fin (টেকনিক্যাল) থেকে নতুন চূড়ান্ত fin বানায় */
+function applyUnified(L) {
+  if (!L.fin0) L.fin0 = L.fin;
+  L.U = unifiedSignal(L);
+  L.fin = { f: L.U.decision === "NO TRADE" ? "HOLD" : L.U.decision, raw: L.fin0.raw || L.fin0.f, tech: L.fin0.f, note: L.fin0.note, unified: true };
+}
+function mtfScan() {
+  if (mtfScanning || botScanning || !last || document.hidden) return;
+  var base = last.base, cur = last.key, src = last.src;
+  var todo = MTF_KEYS.filter(function (k) {
+    if (k === cur) return false; var c = mtfCache[base + "|" + k];
+    return !c || c.s.src !== src || Date.now() - c.at > Math.max(120, TFS[k].refresh * 2) * 1000;
+  });
+  if (!todo.length) return;
+  mtfScanning = true;
+  var chain = Promise.resolve();
+  todo.forEach(function (k) {
+    chain = chain.then(function () { return new Promise(function (ok) { setTimeout(ok, 2500); }); }).then(function () {
+      if (!last || last.base !== base || Date.now() < kuCoolUntil) return;
+      return fetchCandles(base, k).then(function (raw) { analyzeTF(base, k, raw, Date.now()); }).catch(function () {});
+    });
+  });
+  chain.then(function () { mtfScanning = false; mtfRefresh(); }, function () { mtfScanning = false; });
+}
+function mtfRefresh() {
+  if (!last) return;
+  var d0 = last.U ? last.U.decision + "|" + last.U.score : "";
+  try { applyUnified(last); if (last.U.decision + "|" + last.U.score !== d0) render(); else renderMtf(); } catch (e) { if (window.console) console.error(e); }
+}
+function mtfAge(c) { var s = Math.round((Date.now() - c.at) / 1000); return s < 90 ? s + " সে. আগে" : Math.round(s / 60) + " মি. আগে"; }
+
+/* চার্ট-ভিত্তিক সিদ্ধান্ত লাইন + অবজেক্টের বিশদ ব্যাখ্যা */
+var CI_KIND = { SR: "S/R", DEM: "Demand", SUP: "Supply", OB: "Order Block", FVG: "FVG", TL: "ট্রেন্ডলাইন", SW: "সুইং", LQ: "লিকুইডিটি", BO: "ব্রেকআউট", FBO: "ফলস ব্রেকআউট", PA: "প্রাইস অ্যাকশন", CONS: "কনসলিডেশন", EV: "স্ট্রাকচার" };
+function renderIntel() {
+  var L = last, cvb = $("chartVerdict"), box = $("intelBody"); if (!box || !cvb) return; clearEl(box); clearEl(cvb);
+  if (!L || !L.M || !L.M.intel) return;
+  var I = L.M.intel, cb = I.bias, U = L.U, E = L.ENG, px = L.P.c[L.P.n - 1], atr = L.M.atr;
+  if (cb) {
+    var ai = E && E.ok && E.live ? (E.live.dirN === "neutral" ? "NEUTRAL" : E.live.dir === "up" ? "BUY" : "SELL") : "–";
+    cvb.appendChild(el("div", "callbar " + (cb.verdict === "NO TRADE" ? "weak" : "call"), "চার্ট-ভিত্তিক: " + cb.verdict + " (পক্ষপাত " + (cb.bias >= 0 ? "+" : "") + cb.bias.toFixed(2) + ") · AI: " + ai + " · চূড়ান্ত: " + (U ? U.decision : "–")));
+    var conflict = cb.verdict !== "NO TRADE" && ai !== "NEUTRAL" && ai !== "–" && cb.verdict !== ai;
+    cvb.appendChild(el("p", conflict ? "warn" : "small", conflict ? "⚠️ দ্বন্দ্ব: চার্ট কাঠামো " + cb.verdict + " বলছে কিন্তু AI পূর্বাভাস " + ai + " — তাই ট্রেড জোর করা হয়নি (NO TRADE)।" : (U ? U.summary : "")));
+  }
+  box.appendChild(el("div", "small", "ট্রেন্ড অবস্থা: " + I.trend.t + (cb && cb.cons ? " · রেঞ্জ/কনসলিডেশন চলছে" : "")));
+  if (cb && cb.ev.length) { var u1 = el("ul", "rs"); cb.ev.forEach(function (x) { u1.appendChild(el("li", x.d > 0 ? "g" : x.d < 0 ? "r" : "", (x.d > 0 ? "🟢 " : x.d < 0 ? "🔴 " : "⚪ ") + x.t)); }); box.appendChild(el("h3", "", "চার্ট পক্ষপাতের কারণ")); box.appendChild(u1); }
+  var list = I.objs.filter(function (o) { return o.kind !== "EV" || true; }).map(function (o) { var d = Math.abs(o.detect - px) / atr; return { o: o, rel: o.strength / (1 + d * 0.5) }; }).sort(function (a, b) { return b.rel - a.rel; }).slice(0, 14);
+  box.appendChild(el("h3", "", "শনাক্ত অবজেক্ট (" + I.objs.length + "টা; কাছের ও শক্তিশালী " + list.length + "টা)"));
+  list.forEach(function (x) {
+    var o = x.o, d = document.createElement("details"); d.className = "ob";
+    var sm = document.createElement("summary"); sm.textContent = (o.dir > 0 ? "🟢 " : o.dir < 0 ? "🔴 " : "⚪ ") + CI_KIND[o.kind] + " · " + o.label + " @ " + fmt(o.detect) + " · শক্তি " + o.strength; d.appendChild(sm);
+    var dl = el("dl", "kv");
+    kvRow(dl, "শনাক্তের দাম", fmt(o.detect) + (o.lo !== undefined ? " (" + fmt(o.lo) + " – " + fmt(o.hi) + ")" : ""));
+    kvRow(dl, "শক্তি (০–১০০)", String(o.strength));
+    kvRow(dl, "নিশ্চিতকরণ", o.status);
+    kvRow(dl, "ঐতিহাসিক প্রতিক্রিয়া", o.kind === "PA" ? (o.hist && o.hist.n >= 5 ? o.hist.n + " বার, দিক মিলেছে " + Math.round(o.hist.hit / o.hist.n * 100) + "%" : "নমুনা কম") : o.react + " বার");
+    kvRow(dl, "বাতিল হবে (দাম)", fmt(o.invalid));
+    kvRow(dl, "কেন শনাক্ত", o.reason);
+    d.appendChild(dl); box.appendChild(d);
+  });
+  box.appendChild(el("p", "small", "প্রতিটা অবজেক্ট শুধু এই এক্সচেঞ্জ/পেয়ার/টাইমফ্রেমের বন্ধ ক্যান্ডেল থেকে গণনা করা। বাতিল হয়ে যাওয়া অবজেক্ট আঁকা হয় না। এগুলো সম্ভাবনার সংকেত — ‘প্রতিষ্ঠানের কেনাবেচা’ বা নিশ্চিত দিক নয়। শক্তি স্কোর একটা সরল ফর্মুলা (ছোঁয়া, প্রতিক্রিয়া, সাম্প্রতিকতা, ভলিউম), পূর্বাভাসের নির্ভুলতা নয়।"));
+}
+
+function renderMtf() {
+  var L = last, box = $("mtfBody"); if (!box) return; clearEl(box);
+  if (!L || !L.U) return;
+  var U = L.U, sy = { up: "▲ UP", down: "▼ DOWN", side: "↔ সাইডওয়েজ" };
+  var hd = el("div", "callbar " + (U.decision === "BUY" ? "call" : U.decision === "SELL" ? "call" : "weak"), "চূড়ান্ত সিদ্ধান্ত: " + U.decision + (U.decision === "NO TRADE" ? " (ট্রেড নয়)" : " · কনফ্লুয়েন্স স্কোর " + U.score + "/100"));
+  box.appendChild(hd);
+  box.appendChild(el("p", "small", U.summary));
+  var tb = el("table", "tbl"), hr = el("tr", "");
+  ["TF", "ট্রেন্ড", "UP%", "ADX", "RSI", "সাপোর্ট", "রেজিস্ট্যান্স"].forEach(function (t) { hr.appendChild(el("th", "", t)); }); tb.appendChild(hr);
+  var srcs = {};
+  MTF_KEYS.forEach(function (k) {
+    var c = mtfCache[L.base + "|" + k], tr = el("tr", ""); tr.appendChild(el("td", "b", k + (k === L.key ? " ●" : "")));
+    if (c && c.s.src === L.src) srcs[k] = mtfAge(c);
+    if (!c || c.s.src !== L.src) { var td = el("td", "", "লোড হচ্ছে…"); td.colSpan = 6; tr.appendChild(td); tb.appendChild(tr); return; }
+    var s = c.s;
+    if (!s.ok) { var t2 = el("td", "", "⚠️ " + s.err); t2.colSpan = 6; tr.appendChild(t2); tb.appendChild(tr); return; }
+    [sy[s.trend].replace(" ", ""), Math.round(s.p0 * 100) + "%" + (s.dirN === "neutral" ? "~" : ""), isFinite(s.adx) ? s.adx.toFixed(0) : "–", isFinite(s.rsi) ? s.rsi.toFixed(0) : "–",
+     s.sup !== null ? fmt(s.sup) : "–", s.res !== null ? fmt(s.res) : "–"].forEach(function (x) { tr.appendChild(el("td", "", x)); });
+    tb.appendChild(tr);
+  });
+  var tw = el("div", ""); tw.style.overflowX = "auto"; tw.appendChild(tb); box.appendChild(tw);
+  box.appendChild(el("div", "small", "ডেটা: " + L.src + " · " + Object.keys(srcs).map(function (k) { return k + " " + srcs[k]; }).join(", ") + " · ~ = NEUTRAL (প্রায় ৫০/৫০)"));
+  var dl = el("dl", "kv");
+  kvRow(dl, "টাইমফ্রেমের সংঘর্ষ", U.conflicts.length ? U.conflicts.join(" · ") : "নেই");
+  var hk = TFS[L.key].htf, hs = hk ? mtfGet(L.base, hk, L.src) : null;
+  kvRow(dl, "উচ্চ টাইমফ্রেম (" + (hk ? TFS[hk].label : "–") + ") প্রেক্ষাপট", hs && hs.ok ? sy[hs.trend] + (hs.sup !== null ? " · সাপোর্ট " + fmt(hs.sup) : "") + (hs.res !== null ? " · রেজিস্ট্যান্স " + fmt(hs.res) : "") : "এখনো নেই");
+  box.appendChild(dl);
+  if (U.pros.length) { box.appendChild(el("h3", "", "পক্ষে")); var u1 = el("ul", "rs"); U.pros.forEach(function (t) { u1.appendChild(el("li", "g", "🟢 " + t)); }); box.appendChild(u1); }
+  if (U.cautions.length) { box.appendChild(el("h3", "", "সাবধানতা")); var u3 = el("ul", "rs"); U.cautions.forEach(function (t) { u3.appendChild(el("li", "", "⚪ " + t)); }); box.appendChild(u3); }
+  if (U.blockers.length) { box.appendChild(el("h3", "", "ট্রেড আটকানোর কারণ")); var u2 = el("ul", "rs"); U.blockers.forEach(function (t) { u2.appendChild(el("li", "r", "⛔ " + t)); }); box.appendChild(u2); }
+  box.appendChild(el("p", "small", "প্রতিটা টাইমফ্রেম নিজের ক্যান্ডেলে আলাদা বিশ্লেষিত। উচ্চ টাইমফ্রেম শুধু প্রেক্ষাপট ও সাবধানতা দেয়; স্ট্রাকচারও উল্টো হলে তবেই থামায়। একই সময়ে BUY ও SELL কখনো সক্রিয় থাকে না — বিপরীত দিকের সেটআপ ‘নিষ্ক্রিয়’ দেখায়।"));
+}
+
 /* ================= ব্যাকটেস্ট (সিগনাল আগে কতটা ঠিক ছিল) ================= */
 function backtest(P, H) {
   var R = { buy: { n: 0, win: 0, sum: 0 }, sell: { n: 0, win: 0, sum: 0 }, base: { n: 0, up: 0 }, span: 0,
@@ -574,7 +843,7 @@ function backtest(P, H) {
     var sg = signalAt(P, i), dec = sg.decision;
     var nbk = R.nb[bucketOf(sg.score)]; nbk.n++; if (P.c[i + 1] > P.o[i + 1]) nbk.u++;   // পরের ক্যান্ডেল উপরে বন্ধ হয়েছিল কিনা
     if (dec === "BUY") { R.buy.n++; R.buy.sum += ret; if (ret > FEE) R.buy.win++; }
-    else if (dec === "SELL") { R.sell.n++; R.sell.sum += ret; if (ret < 0) R.sell.win++; }
+    else if (dec === "SELL") { R.sell.n++; R.sell.sum += ret; if (ret < -FEE) R.sell.win++; }   // BUY-এর মতোই খরচ ধরে (আগে অসম ছিল)
   }
   R.span = R.base.n; R.h = H;
   return R;
@@ -617,17 +886,20 @@ function render() {
 
   var v = $("verdict");
   v.hidden = false; v.className = "verdict " + cls;
-  $("vword").textContent = fin.f;
+  $("vword").textContent = fin.unified && fin.f === "HOLD" ? "NO TRADE" : fin.f;
   var strength = Math.min(100, Math.round(Math.abs(S.score) / MAX_SCORE * 100));
-  $("vstr").textContent = strength + "% (স্কোর " + S.score + "/" + MAX_SCORE + ")";
+  if (L.U) strength = L.U.decision === "NO TRADE" ? 0 : L.U.score;
+  $("vstr").textContent = L.U ? (L.U.decision === "NO TRADE" ? "ট্রেড নয়" : "কনফ্লুয়েন্স " + L.U.score + "/100") + " (ইন্ডিকেটর স্কোর " + S.score + "/" + MAX_SCORE + ")" : strength + "% (স্কোর " + S.score + "/" + MAX_SCORE + ")";
   $("vbar").style.width = strength + "%";
   var txt = TEXT[fin.f];
   if (S.filtered) txt = "ট্রেন্ডের জোর কম (ADX " + S.adx.toFixed(0) + "), বাজার সাইডওয়েজ। এই সময়ে সিগনাল ভুল হওয়ার সম্ভাবনা বেশি, তাই অপেক্ষা।";
   if (fin.gate) txt = "সিগনাল ছিল " + fin.raw + ", কিন্তু মান-ফিল্টারে আটকেছে: " + fin.gate;
   else if (fin.q) txt += " ইতিহাসে এই সিগনাল " + fin.q;
+  if (L.U) txt = L.U.summary;
   $("vtext").textContent = txt;
   var htfLine = "";
   if (L.H) htfLine = "উচ্চ টাইমফ্রেম (" + TFS[L.htfKey].label + "): " + L.H.decision + (fin.note ? " | " + fin.note : "");
+  if (L.U && L.U.conflicts.length) htfLine += (htfLine ? " | " : "") + "সংঘর্ষ: " + L.U.conflicts.join(", ");
   $("vhtf").textContent = htfLine;
 
   var key = base + "|" + L.key;
@@ -668,7 +940,7 @@ function render() {
     ["EMA 9 / 21 / 50 / 200", fmt(P.e9[i]) + " / " + fmt(P.e21[i]) + " / " + fmt(P.e50[i]) + " / " + fmt(P.e200[i])]
   ]);
 
-  $("meta").textContent = "ডেটা: " + (source === "kucoin" ? "KuCoin" : "Binance (KuCoin থেকে ডেটা আনা যায়নি, দাম প্রায় একই)") +
+  $("meta").textContent = "ডেটা উৎস: " + (L.src === "Binance" ? "Binance (ফলব্যাক, KuCoin নয়)" : "KuCoin Spot") + " | শেষ আপডেট: " + new Date(L.fetchedAt).toLocaleTimeString("en-GB") + " | শেষ ক্যান্ডেল শুরু: " + new Date(L.P.t[L.P.n - 1]).toLocaleTimeString("en-GB") + " | " + dqText(L) +
     " | সিগনাল গণনা শেষ বন্ধ ক্যান্ডেল (" + new Date(S.time).toLocaleString("en-GB") + ") ধরে, লাইভ দাম চলমান ক্যান্ডেল থেকে।";
 }
 
@@ -1198,6 +1470,7 @@ var CATS = [
   { k: "L", name: "ভলিউম", w: 0.12 },
   { k: "A", name: "প্রাইস অ্যাকশন (ক্যান্ডেল)", w: 0.08 }
 ];
+var W_ZONE = 0.10;     // জোন (OB, Supply/Demand, FVG) ব্যবহার হলে তার ওজন
 var W_STRUCT = 0.10;   // মার্কেট স্ট্রাকচারের (BOS/CHOCH ট্রেন্ড) ওজন
 
 function buildInd(P) {
@@ -1533,7 +1806,7 @@ function indVal(d, i) {
 }
 
 /* প্রতি ক্যান্ডেলে ক্যাটাগরি-ভিত্তিক গড় ভোট + মার্কেট স্ট্রাকচার = কম্পোজিট স্কোর [-1, +1] */
-function compAt(IND, i, trendAt) {
+function compAt(IND, i, trendAt, zoneAt) {
   var S = 0, cats = {}, bull = 0, bear = 0, neu = 0;
   CATS.forEach(function (ct) {
     var arr = IND.byCat[ct.k], s = 0, q;
@@ -1549,6 +1822,7 @@ function compAt(IND, i, trendAt) {
   var tsg = trendAt ? (trendAt[i] || 0) : 0;
   cats.S = tsg;
   S += W_STRUCT * tsg;
+  if (zoneAt) { var zv = zoneAt[i] || 0; cats.Z = zv; S += W_ZONE * zv; }
   return { S: S, cats: cats, bull: bull, bear: bear, neu: neu };
 }
 function bucketS(s) { return s <= -0.25 ? 0 : s <= -0.12 ? 1 : s <= -0.04 ? 2 : s < 0.04 ? 3 : s < 0.12 ? 4 : s < 0.25 ? 5 : 6; }
@@ -1777,9 +2051,9 @@ function buildMap(P) {
 
 /* ================= ট্রেড সেটআপ (Entry / SL / TP1-3 / RR) ================= */
 var RR_T = [2, 3, 4];
-function buildSetups(P, M, ENG) {
+function buildSetups(P, M, ENG, livePx) {
   if (!M || !M.ok) return { buy: null, sell: null, primary: null };
-  var price = P.c[P.n - 1], atr = M.atr, out = {};
+  var price = livePx > 0 ? livePx : P.c[P.n - 1], atr = M.atr, out = {};
   function cand(side) {
     var z = [], bull = side === "BUY";
     function addz(type, lo, hi, label) { z.push({ type: type, lo: lo, hi: hi, label: label }); }
@@ -1845,28 +2119,362 @@ function buildSetups(P, M, ENG) {
 
 /* ================= AI ইঞ্জিন ৩: পরের ক্যান্ডেল পূর্বাভাস ================= */
 var WARM = 210, SHRINK = 10;
-function wfEval(P, IND, trendAt) {
-  var n = P.n, u = [], nn = [], b, i;
-  for (b = 0; b < NBK; b++) { u.push(0); nn.push(0); }
-  var R = { n: 0, hit: 0, cn: 0, chit: 0, up: 0, prevHit: 0, prevN: 0, cats: null };
-  var comps = new Array(n);
-  for (i = WARM; i <= n - 3; i++) {
-    var cp = compAt(IND, i, trendAt);
-    comps[i] = cp;
-    b = bucketS(cp.S);
-    var p = (u[b] + SHRINK / 2) / (nn[b] + SHRINK);
-    var y = P.c[i + 1] > P.o[i + 1] ? 1 : P.c[i + 1] < P.o[i + 1] ? 0 : -1;
+/* জোন-সিরিজ: প্রতিটি ক্যান্ডেলে তখন পর্যন্ত জানা, অক্ষত জোনের ভেতরে দাম আছে কিনা (+ বুলিশ, − বেয়ারিশ) */
+/* ================= চার্ট ইন্টেলিজেন্স: প্রতিটি অবজেক্টের গণনা, যাচাই ও ব্যাখ্যা =================
+   সব হিসাব শুধু নির্বাচিত এক্সচেঞ্জ/পেয়ার/টাইমফ্রেমের বন্ধ ক্যান্ডেল (OHLCV) থেকে। কোনো OTC/অন্য ফিড নয়।
+   প্রতিটি অবজেক্ট: id, kind, dir(+1 বুলিশ/-1 বেয়ারিশ), detect(শনাক্তের দাম), strength(০–১০০), status, react(প্রতিক্রিয়া সংখ্যা),
+   invalid(বাতিলের দাম), reason(কেন)। শক্তি = নিচের ফর্মুলা (ডকুমেন্টেড), অনুমান-ভিত্তিক; "প্রতিষ্ঠানের কেনাবেচা" দাবি করা হয় না। */
+var CI_VER = "ci1";
+function ciSt(x) { return Math.max(0, Math.min(100, Math.round(x))); }
+function ciAtr(P, i) { var a = P.atr[i]; return a > 0 ? a : (P.atr[P.n - 1] > 0 ? P.atr[P.n - 1] : P.c[i] * 0.001); }
+/* জোনে দাম ফিরে আসার (প্রতিক্রিয়ার) সংখ্যা: লো/হাই জোনে ঢুকে ক্লোজ জোনের বাইরে ফিরেছে; একটানা ছোঁয়া একবারই গোনা */
+function ciReact(P, lo, hi, dir, from, tol) {
+  var cnt = 0, inz = false, i;
+  for (i = Math.max(0, from); i < P.n; i++) {
+    var touch = dir > 0 ? (P.l[i] <= hi + tol && P.l[i] >= lo - tol * 4) : (P.h[i] >= lo - tol && P.h[i] <= hi + tol * 4);
+    var ret = dir > 0 ? P.c[i] > hi : P.c[i] < lo;
+    if (touch && ret) { if (!inz) cnt++; inz = true; } else if (!touch) inz = false;
+  }
+  return cnt;
+}
+/* এক ক্যান্ডেলের প্রাইস-অ্যাকশন ধরন (শুধু i পর্যন্ত তথ্য) */
+function ciPA(P, i) {
+  var out = [], atr = ciAtr(P, i), o = P.o[i], c = P.c[i], h = P.h[i], l = P.l[i], body = Math.abs(c - o), rng = h - l, up = c > o;
+  if (!(rng > 0)) return out;
+  var uw = h - Math.max(o, c), lw = Math.min(o, c) - l, big = P.volAvg && P.volAvg[i] > 0 && P.v[i] >= 1.2 * P.volAvg[i];
+  if (i >= 1) {
+    var pb = Math.abs(P.c[i - 1] - P.o[i - 1]), pup = P.c[i - 1] > P.o[i - 1];
+    if (up !== pup && pb > 0 && body >= pb && body >= 0.5 * atr && (up ? (o <= P.c[i - 1] && c >= P.o[i - 1]) : (o >= P.c[i - 1] && c <= P.o[i - 1])))
+      out.push({ k: "ENG", dir: up ? 1 : -1, size: body / atr, big: big });
+  }
+  if (rng >= 0.6 * atr) {
+    if (lw >= 2 * body && lw >= 0.6 * rng) out.push({ k: "PIN", dir: 1, size: rng / atr, big: big });
+    else if (uw >= 2 * body && uw >= 0.6 * rng) out.push({ k: "PIN", dir: -1, size: rng / atr, big: big });
+  }
+  if (body >= 0.7 * rng && body >= 1.2 * atr) out.push({ k: "STR", dir: up ? 1 : -1, size: body / atr, big: big });
+  if (i >= 11) {
+    var hh = -Infinity, ll = Infinity, q;
+    for (q = i - 10; q < i; q++) { if (P.h[q] > hh) hh = P.h[q]; if (P.l[q] < ll) ll = P.l[q]; }
+    if (big && body >= 0.6 * rng) {
+      if (c > hh + 0.1 * atr) out.push({ k: "BOC", dir: 1, size: body / atr, big: true });
+      else if (c < ll - 0.1 * atr) out.push({ k: "BOC", dir: -1, size: body / atr, big: true });
+    }
+  }
+  if (i >= 3 && isFinite(P.rsi[i]) && isFinite(P.rsi[i - 1]) && isFinite(P.hist[i]) && isFinite(P.hist[i - 1])) {
+    var rc = (P.rsi[i - 1] < 50 && P.rsi[i] >= 50) ? 1 : (P.rsi[i - 1] > 50 && P.rsi[i] <= 50) ? -1 : 0;
+    var mc = (P.hist[i - 1] <= 0 && P.hist[i] > 0) ? 1 : (P.hist[i - 1] >= 0 && P.hist[i] < 0) ? -1 : 0;
+    if (rc !== 0 && rc === mc) out.push({ k: "MOM", dir: rc, size: 1, big: false });
+  }
+  return out;
+}
+var CI_PA_NAME = { ENG: "Engulfing", PIN: "Pin bar", STR: "Strong candle", BOC: "Breakout confirm", MOM: "Momentum change", REJ: "Rejection" };
+var CI_PA_BN = { ENG: "ইঙ্গালফিং", PIN: "পিন বার", STR: "শক্তিশালী ক্যান্ডেল", BOC: "ব্রেকআউট নিশ্চিত (ভলিউম সহ)", MOM: "মোমেন্টাম বদল", REJ: "লেভেলে রিজেকশন" };
+
+function buildIntel(P, M) {
+  var n = P.n, I = { ver: CI_VER, objs: [], byId: {}, dup: 0, bias: null, trend: null };
+  if (!M || !M.ok) return I;
+  var atr = M.atr, px = P.c[n - 1];
+  function add(o) {
+    if (I.byId[o.id]) { I.dup++; return null; }
+    o.strength = ciSt(o.strength); I.byId[o.id] = o; I.objs.push(o); return o;
+  }
+  var tol = 0.15 * atr;
+  /* ---- ১) S/R (পিভট-ক্লাস্টার): শক্তি = 25 + 15·ছোঁয়া(≤4) + 10·প্রতিক্রিয়া(≤3) + সাম্প্রতিকতা(≤10) ---- */
+  M.srShow.forEach(function (z) {
+    var sup = z.p < px, dir = sup ? 1 : -1, rc = ciReact(P, z.p - tol, z.p + tol, dir, z.i0, tol), age = n - 1 - z.i1;
+    add({ id: "SR|" + dir + "|" + Math.round(z.p) + "|" + z.i0, kind: "SR", dir: dir, label: sup ? "Support" : "Resistance", detect: z.p, p: z.p, i0: z.i0, touches: z.touches,
+      strength: 25 + 15 * Math.min(z.touches, 4) + 10 * Math.min(rc, 3) + 10 * Math.max(0, 1 - age / 150), react: rc,
+      status: z.touches >= 3 ? "নিশ্চিত" : "প্রাথমিক", invalid: sup ? z.p - 0.5 * atr : z.p + 0.5 * atr,
+      reason: z.touches + " বার পিভটে একই দামে দাম উল্টেছে; " + rc + " বার ফিরে এসে প্রতিক্রিয়া দেখিয়েছে। বাতিল: ক্যান্ডেল " + (sup ? "নিচে" : "উপরে") + " ক্লোজ করলে" });
+  });
+  /* ---- ২) সাপ্লাই/ডিমান্ড, অর্ডার ব্লক, FVG ---- */
+  function zoneObj(z, kind, dir, label, fromI, extra) {
+    var rc = ciReact(P, z.lo, z.hi, dir, fromI + 3, tol), fresh = !z.tested && !(z.mit >= 0);
+    var st = 30 + 12 * Math.min(rc, 3) + (fresh ? 10 : 0) + extra;
+    return add({ id: kind + "|" + dir + "|" + Math.round((z.lo + z.hi) / 2) + "|" + fromI, kind: kind, dir: dir, label: label, detect: (z.lo + z.hi) / 2, lo: z.lo, hi: z.hi, i0: fromI,
+      strength: st, react: rc, status: fresh ? "অস্পৃষ্ট (নতুন)" : "পরীক্ষিত", invalid: dir > 0 ? z.lo - 0.1 * atr : z.hi + 0.1 * atr, z: z });
+  }
+  M.demand.forEach(function (z) { var o = zoneObj(z, "DEM", 1, "Demand", z.i, 8); if (o) o.reason = "দামের জোরালো উঠে যাওয়ার আগের বেস (ডিসপ্লেসমেন্ট ≥ ATR); এখন পর্যন্ত " + o.react + " বার প্রতিক্রিয়া। বাতিল: ক্লোজ জোনের নিচে"; });
+  M.supply.forEach(function (z) { var o = zoneObj(z, "SUP", -1, "Supply", z.i, 8); if (o) o.reason = "দামের জোরালো নেমে যাওয়ার আগের বেস (ডিসপ্লেসমেন্ট ≥ ATR); এখন পর্যন্ত " + o.react + " বার প্রতিক্রিয়া। বাতিল: ক্লোজ জোনের উপরে"; });
+  M.obBull.forEach(function (z) { var o = zoneObj(z, "OB", 1, "Bull OB", z.i, 6); if (o) o.reason = "বেয়ারিশ ক্যান্ডেলের পর স্ট্রাকচার ভাঙা (BOS/CHOCH) বুলিশ মুভ; জোন এখনো মিটিগেট হয়নি। এটা ‘সম্ভাব্য’ চাহিদা এলাকা, প্রতিষ্ঠানের কেনা প্রমাণ নয়"; });
+  M.obBear.forEach(function (z) { var o = zoneObj(z, "OB", -1, "Bear OB", z.i, 6); if (o) o.reason = "বুলিশ ক্যান্ডেলের পর স্ট্রাকচার ভাঙা বেয়ারিশ মুভ; জোন এখনো মিটিগেট হয়নি। এটা ‘সম্ভাব্য’ যোগান এলাকা, প্রতিষ্ঠানের বিক্রি প্রমাণ নয়"; });
+  M.fvgOpen.forEach(function (z) {
+    var sz = (z.hi - z.lo) / atr;
+    add({ id: "FVG|" + z.dir + "|" + Math.round((z.lo + z.hi) / 2) + "|" + z.i, kind: "FVG", dir: z.dir, label: "FVG", detect: (z.lo + z.hi) / 2, lo: z.lo, hi: z.hi, i0: z.i,
+      strength: 25 + (1 - Math.min(1, z.fill)) * 30 + Math.min(2, sz) * 10, react: ciReact(P, z.lo, z.hi, z.dir, z.i + 3, tol), status: z.fill > 0 ? "আংশিক ভরা (" + Math.round(z.fill * 100) + "%)" : "খোলা",
+      invalid: z.dir > 0 ? z.lo : z.hi, reason: "৩ ক্যান্ডেলের মাঝে দাম-ফাঁক (ক্যান্ডেল ১ ও ৩ ওভারল্যাপ করেনি), আকার " + sz.toFixed(2) + "×ATR। বাতিল/ভরাট: দাম পুরো ফাঁক পেরোলে" });
+  });
+  /* ---- ৩) ট্রেন্ডলাইন: ≥২ নিশ্চিত পিভট + তৃতীয় ছোঁয়া গোনা; মাঝে কোনো ক্লোজ লাইন ভাঙেনি ---- */
+  I.tl = [];
+  [["L", 1], ["H", -1]].forEach(function (cf) {
+    var pv = M.raw.filter(function (q) { return q.t === cf[0] && q.c <= n - 1 && q.i >= n - 220; }), m = pv.length, best = null, a, b, k;
+    for (a = Math.max(0, m - 6); a < m - 1; a++) for (b = a + 1; b < m; b++) {
+      var A = pv[a], B = pv[b]; if (B.i - A.i < 8) continue;
+      var sl = (B.p - A.p) / (B.i - A.i); if (cf[1] > 0 ? sl <= 0 : sl >= 0) continue;
+      var ok = true; for (k = A.i + 1; k < n; k++) { var v = A.p + sl * (k - A.i); if (cf[1] > 0 ? P.c[k] < v - 0.15 * atr : P.c[k] > v + 0.15 * atr) { ok = false; break; } }
+      if (!ok) continue;
+      var tc = 0; pv.forEach(function (q) { if (q.i >= A.i && Math.abs(q.p - (A.p + sl * (q.i - A.i))) <= 0.25 * atr) tc++; });
+      if (tc < 2) continue;
+      var sc = tc * 1000 + B.i; if (!best || sc > best.sc) best = { A: A, B: B, sl: sl, tc: tc, sc: sc };
+    }
+    if (best) {
+      var vNow = best.A.p + best.sl * (n - 1 - best.A.i), dirT = cf[1];
+      var o = add({ id: "TL|" + dirT + "|" + best.A.i + "|" + best.B.i, kind: "TL", dir: dirT, label: dirT > 0 ? "Ascending TL" : "Descending TL", detect: vNow, p: vNow, i0: best.A.i, a: best.A, b: best.B, sl: best.sl,
+        strength: 25 + 18 * best.tc + (n - best.A.i >= 30 ? 10 : 0), react: best.tc, status: best.tc >= 3 ? "নিশ্চিত (৩+ ছোঁয়া)" : "প্রাথমিক (২ ছোঁয়া)",
+        invalid: dirT > 0 ? vNow - 0.3 * atr : vNow + 0.3 * atr,
+        reason: (dirT > 0 ? "উঁচু হতে থাকা নিম্নবিন্দুগুলো" : "নিচু হতে থাকা উচ্চবিন্দুগুলো") + " জুড়ে লাইন; " + best.tc + " পিভট লাইনের ±0.25 ATR-এ; মাঝে কোনো ক্লোজ লাইন ভাঙেনি" });
+      if (o) I.tl.push(o);
+    }
+  });
+  /* ---- ৪) আগের সুইং হাই/লো (সর্বশেষ নিশ্চিত পিভট) ---- */
+  ["H", "L"].forEach(function (tt) {
+    var pv = M.raw.filter(function (q) { return q.t === tt && q.c <= n - 1; }), q = pv[pv.length - 1]; if (!q) return;
+    var k, brk = false; for (k = q.c + 1; k < n; k++) if (tt === "H" ? P.c[k] > q.p : P.c[k] < q.p) brk = true;
+    if (brk) return;
+    var prom = 0, lo2 = Math.max(0, q.i - 10), hi2 = Math.min(n - 1, q.i + 10), w; for (w = lo2; w <= hi2; w++) prom = Math.max(prom, tt === "H" ? q.p - P.l[w] : P.h[w] - q.p);
+    add({ id: "SW|" + tt + "|" + q.i, kind: "SW", dir: tt === "H" ? -1 : 1, label: tt === "H" ? "Prev swing high" : "Prev swing low", detect: q.p, p: q.p, i0: q.i,
+      strength: 30 + Math.min(3, prom / atr) * 10, react: 0, status: "অভাঙা (নিশ্চিত পিভট)", invalid: tt === "H" ? q.p + 0.1 * atr : q.p - 0.1 * atr,
+      reason: "সর্বশেষ নিশ্চিত " + (tt === "H" ? "উচ্চ" : "নিম্ন") + " পিভট, এরপর কোনো ক্যান্ডেল ক্লোজে ভাঙেনি; ভাঙলে ব্রেকআউট ধরা হবে" });
+  });
+  /* ---- ৫) লিকুইডিটি জোন: সমান হাই/লো (≥২ পিভট ±0.15 ATR), এখনো সুইপ হয়নি ---- */
+  ["H", "L"].forEach(function (tt) {
+    var pv = M.raw.filter(function (q) { return q.t === tt && q.c <= n - 1 && q.i >= n - 160; }).sort(function (x, y) { return x.p - y.p; }), grp = [], g0 = [], q;
+    pv.forEach(function (x) { if (g0.length && Math.abs(x.p - g0[g0.length - 1].p) > 0.15 * atr) { grp.push(g0); g0 = []; } g0.push(x); }); if (g0.length) grp.push(g0);
+    grp.forEach(function (g) {
+      if (g.length < 2) return;
+      var lvl = tt === "H" ? Math.max.apply(null, g.map(function (x) { return x.p; })) : Math.min.apply(null, g.map(function (x) { return x.p; })), li = Math.max.apply(null, g.map(function (x) { return x.i; })), k, sw = false;
+      for (k = li + 1; k < n; k++) if (tt === "H" ? P.h[k] > lvl + 0.1 * atr : P.l[k] < lvl - 0.1 * atr) sw = true;
+      if (sw) return;
+      add({ id: "LQ|" + tt + "|" + Math.round(lvl) + "|" + g[0].i, kind: "LQ", dir: tt === "H" ? -1 : 1, label: tt === "H" ? "Equal highs (EQH)" : "Equal lows (EQL)", detect: lvl, lo: lvl - 0.1 * atr, hi: lvl + 0.1 * atr, p: lvl, i0: g[0].i,
+        strength: 25 + 15 * Math.min(g.length, 4), react: g.length, status: "অসুইপড", invalid: tt === "H" ? lvl + 0.1 * atr : lvl - 0.1 * atr,
+        reason: g.length + "টা " + (tt === "H" ? "উচ্চ" : "নিম্ন") + " পিভট প্রায় একই দামে; এর " + (tt === "H" ? "উপরে" : "নিচে") + " স্টপ-অর্ডার জমে থাকতে পারে (অনুমান) — দাম ওখানে টানতে পারে, নিশ্চিত নয়" });
+    });
+  });
+  /* ---- ৬) ব্রেকআউট/রিটেস্ট ও ফলস ব্রেকআউট (S/R লেভেল ভেঙে ক্লোজ ≥0.2 ATR) ---- */
+  var bos = [];
+  M.sr.forEach(function (z) {
+    if (z.touches < 2) return;
+    var origin = P.c[z.i1] < z.p ? -1 : 1, k, bk = -1;                  // origin=-1: লেভেল উপরে (রেজিস্ট্যান্স)
+    for (k = z.i1 + 1; k < n; k++) { if (origin < 0 ? P.c[k] > z.p + 0.2 * atr : P.c[k] < z.p - 0.2 * atr) { bk = k; break; } }
+    if (bk < 0 || bk < n - 60) return;
+    var dirB = origin < 0 ? 1 : -1, held = false, failed = false, rt = -1, j;
+    for (j = bk + 1; j < n; j++) {
+      var back = dirB > 0 ? P.c[j] < z.p - 0.1 * atr : P.c[j] > z.p + 0.1 * atr;
+      if (back) { failed = true; rt = j; break; }
+      var touch = dirB > 0 ? (P.l[j] <= z.p + 0.3 * atr && P.c[j] > z.p) : (P.h[j] >= z.p - 0.3 * atr && P.c[j] < z.p);
+      if (touch && j <= bk + 25) { held = true; rt = j; }
+    }
+    var quick = failed && rt - bk <= 3;
+    var big = P.volAvg && P.volAvg[bk] > 0 && P.v[bk] >= 1.2 * P.volAvg[bk];
+    if (failed) {
+      if (quick) add({ id: "FBO|" + (-dirB) + "|" + Math.round(z.p) + "|" + bk, kind: "FBO", dir: -dirB, label: "False breakout", detect: z.p, p: z.p, i0: bk, i1: rt, strength: 40 + 10 * Math.min(z.touches, 3) + (big ? 10 : 0), react: z.touches,
+        status: "নিশ্চিত (ক্যান্ডেল ফিরে ক্লোজ)", invalid: dirB > 0 ? Math.max.apply(null, P.h.slice(bk, rt + 1)) : Math.min.apply(null, P.l.slice(bk, rt + 1)),
+        reason: "লেভেল " + fmt(z.p) + " ভেঙে ক্লোজ হলেও " + (rt - bk) + " ক্যান্ডেলের মধ্যে ভেতরে ফিরে এসেছে — ব্রেকআউট ব্যর্থ। বাতিল: দাম আবার ঐ প্রান্ত পেরোলে" });
+      return;
+    }
+    bos.push({ id: "BO|" + dirB + "|" + Math.round(z.p) + "|" + bk, kind: "BO", dir: dirB, label: held ? "Breakout + Retest ✓" : "Breakout (রিটেস্ট অপেক্ষা)", detect: z.p, p: z.p, i0: bk, i1: rt, strength: 35 + (held ? 30 : 0) + (big ? 10 : 0) + 8 * Math.min(z.touches, 3),
+      react: z.touches, status: held ? "রিটেস্ট টিকেছে (নিশ্চিত)" : "রিটেস্টের অপেক্ষায়", invalid: dirB > 0 ? z.p - 0.1 * atr : z.p + 0.1 * atr,
+      reason: "লেভেল " + fmt(z.p) + " (" + z.touches + " ছোঁয়া) ক্লোজে ভেঙেছে" + (big ? ", ভলিউম গড়ের ১.২× এর বেশি" : "") + (held ? "; পরে ফিরে লেভেল ছুঁয়ে টিকে গেছে" : "; এখনো রিটেস্ট হয়নি") + ". বাতিল: লেভেলের ওপারে ক্লোজ" });
+  });
+  bos.sort(function (x, y) { return y.i0 - x.i0; }).slice(0, 3).forEach(add);
+  /* ---- ৭) প্রাইস অ্যাকশন (সর্বশেষ ৩০ বন্ধ ক্যান্ডেল) + ঐতিহাসিক হিট-রেট ---- */
+  if (!I.paHist) I.paHist = {};
+  var ph = {}, q2;
+  for (q2 = 20; q2 < n - 1; q2++) ciPA(P, q2).forEach(function (x) {
+    if (x.k === "MOM") return; var key = x.k + (x.dir > 0 ? "+" : "-"), h = ph[key] || (ph[key] = { n: 0, hit: 0 });
+    h.n++; if ((P.c[q2 + 1] > P.c[q2]) === (x.dir > 0)) h.hit++;
+  });
+  I.paHist = ph;
+  var levels = M.srShow.map(function (z) { return z.p; }).concat(M.demand.map(function (z) { return z.hi; }), M.supply.map(function (z) { return z.lo; }));
+  var paN = 0;
+  for (q2 = n - 1; q2 >= Math.max(11, n - 30) && paN < 12; q2--) {
+    var at = ciAtr(P, q2);
+    ciPA(P, q2).forEach(function (x) {
+      var key = x.k + (x.dir > 0 ? "+" : "-"), hh = ph[key], kind = x.k, atLevel = false, lv = null;
+      if (x.k === "PIN") { var tip = x.dir > 0 ? P.l[q2] : P.h[q2]; levels.forEach(function (L2) { if (Math.abs(L2 - tip) <= 0.2 * at) { atLevel = true; lv = L2; } }); if (atLevel) kind = "REJ"; }
+      var o = add({ id: "PA|" + x.k + "|" + x.dir + "|" + q2, kind: "PA", sub: kind, dir: x.dir, label: CI_PA_NAME[kind], detect: P.c[q2], p: P.c[q2], i0: q2, i: q2,
+        strength: 20 + 30 * Math.min(1, x.size / 1.5) + (atLevel ? 20 : 0) + (x.big ? 10 : 0), react: hh ? hh.n : 0, hist: hh || null,
+        status: "বন্ধ ক্যান্ডেলে নিশ্চিত", invalid: x.dir > 0 ? P.l[q2] : P.h[q2],
+        reason: CI_PA_BN[kind] + " (আকার " + x.size.toFixed(2) + "×ATR" + (x.big ? ", ভলিউম বেশি" : "") + (atLevel ? ", " + fmt(lv) + " লেভেলে" : "") + ")" + (hh && hh.n >= 5 ? "; ইতিহাসে একই ধরন " + hh.n + " বার, পরের ক্যান্ডেল দিক মিলেছে " + Math.round(hh.hit / hh.n * 100) + "%" : "; ইতিহাসে নমুনা কম") + ". বাতিল: ক্যান্ডেলের " + (x.dir > 0 ? "লো" : "হাই") + " ভাঙলে" });
+      if (o) paN++;
+    });
+  }
+  /* কনসলিডেশন বক্স: শেষ ১০ ক্যান্ডেলের মোট রেঞ্জ ≤ 2.2 ATR */
+  var w0 = n - 10, hi0 = -Infinity, lo0 = Infinity, q3;
+  for (q3 = w0; q3 < n; q3++) { if (P.h[q3] > hi0) hi0 = P.h[q3]; if (P.l[q3] < lo0) lo0 = P.l[q3]; }
+  if (hi0 - lo0 <= 2.2 * atr) {
+    var st0 = w0; while (st0 > Math.max(0, n - 40) && Math.max(hi0, P.h[st0 - 1]) - Math.min(lo0, P.l[st0 - 1]) <= 2.2 * atr) { st0--; hi0 = Math.max(hi0, P.h[st0]); lo0 = Math.min(lo0, P.l[st0]); }
+    add({ id: "CONS|0|" + Math.round(lo0) + "|" + st0, kind: "CONS", dir: 0, label: "Consolidation", detect: (hi0 + lo0) / 2, lo: lo0, hi: hi0, i0: st0, strength: 25 + Math.min(30, (n - st0) * 1.5), react: 0,
+      status: "ব্রেকআউটের অপেক্ষা", invalid: hi0 + 0.1 * atr, reason: (n - st0) + " ক্যান্ডেল ধরে মোট রেঞ্জ ≤ 2.2×ATR (সংকুচিত)। যেদিকে ক্লোজ ভাঙবে সেদিকে ব্রেকআউট; এর মধ্যে ট্রেডে নয়েজ বেশি" });
+  }
+  /* ---- ৮) স্ট্রাকচার: BOS/CHOCH, ট্রেন্ড চলমান না উল্টানো ---- */
+  var ev = M.eventsRecent[M.eventsRecent.length - 1];
+  M.eventsRecent.slice(-2).forEach(function (e2) {
+    add({ id: "EV|" + e2.type + "|" + e2.dir + "|" + e2.t, kind: "EV", dir: e2.dir, label: e2.type, detect: e2.p, p: e2.p, i0: e2.i, strength: e2.type === "CHOCH" ? 55 : 45, react: 0, status: "ক্লোজে নিশ্চিত", invalid: e2.dir > 0 ? e2.p - 0.3 * atr : e2.p + 0.3 * atr,
+      reason: (e2.type === "BOS" ? "ট্রেন্ডের দিকে আগের সুইং লেভেল ক্লোজে ভেঙেছে (ট্রেন্ড চলমান)" : "ট্রেন্ডের বিপরীতে সুইং লেভেল ভেঙেছে (সম্ভাব্য উল্টানো — অন্য সংকেত লাগবে)") + " @ " + fmt(e2.p) });
+  });
+  I.trend = M.trend > 0 ? { s: "up", t: "আপট্রেন্ড (HH/HL)" } : M.trend < 0 ? { s: "down", t: "ডাউনট্রেন্ড (LH/LL)" } : { s: "side", t: "রেঞ্জ/অনির্ধারিত" };
+  if (ev && n - 1 - ev.t <= 15) I.trend.t += ev.type === "CHOCH" ? " · CHOCH: উল্টানোর সতর্কতা" : " · BOS: ট্রেন্ড চলমান";
+  I.bias = ciBias(P, M, I);
+  return I;
+}
+/* চার্ট-ভিত্তিক পক্ষপাত (−১…+১): শুধু দৃশ্যমান কাঠামোর যোগফল; |bias| ≥ 0.30 হলে BUY/SELL, নইলে NO TRADE */
+function ciBias(P, M, I) {
+  var n = P.n, px = P.c[n - 1], atr = M.atr, ev = [], b = 0;
+  function w(d, x, t) { if (!x) return; b += d * x; ev.push({ d: d, w: x, t: t }); }
+  w(M.trend, 0.35, M.trend > 0 ? "মার্কেট স্ট্রাকচার আপট্রেন্ড (HH/HL)" : "মার্কেট স্ট্রাকচার ডাউনট্রেন্ড (LH/LL)");
+  var e0 = M.eventsRecent[M.eventsRecent.length - 1]; if (e0 && n - 1 - e0.t <= 15) w(e0.dir, e0.type === "CHOCH" ? 0.25 : 0.15, e0.type + (e0.dir > 0 ? " বুলিশ" : " বেয়ারিশ"));
+  var best = { sup: null, res: null };
+  I.objs.forEach(function (o) {
+    if (o.kind === "TL") { w(o.dir, 0.15, o.label + " বৈধ"); if (o.dir > 0 && px - o.p < 0.5 * atr && px >= o.p) w(1, 0.1, "দাম ট্রেন্ডলাইনের ঠিক ওপরে (বাউন্স এলাকা)"); if (o.dir < 0 && o.p - px < 0.5 * atr && px <= o.p) w(-1, 0.1, "দাম ডাউন-ট্রেন্ডলাইনের ঠিক নিচে (রিজেকশন এলাকা)"); }
+    if (o.kind === "SR" && Math.abs(px - o.p) <= 1.5 * atr) { if (o.dir > 0 && px > o.p) w(1, 0.15 * o.strength / 100, "কাছে সাপোর্ট " + fmt(o.p)); if (o.dir < 0 && px < o.p) w(-1, 0.15 * o.strength / 100, "কাছে রেজিস্ট্যান্স " + fmt(o.p)); }
+    if ((o.kind === "DEM" || o.kind === "OB" && o.dir > 0) && px >= o.lo - 0.1 * atr && px <= o.hi + 0.1 * atr) w(1, 0.15, "দাম বুলিশ জোনের ভেতরে");
+    if ((o.kind === "SUP" || o.kind === "OB" && o.dir < 0) && px >= o.lo - 0.1 * atr && px <= o.hi + 0.1 * atr) w(-1, 0.15, "দাম বেয়ারিশ জোনের ভেতরে");
+    if (o.kind === "BO" && n - 1 - o.i0 <= 30) w(o.dir, o.status.indexOf("টিকেছে") >= 0 ? 0.25 : 0.1, o.label);
+    if (o.kind === "FBO" && n - 1 - o.i1 <= 15) w(o.dir, 0.2, "ফলস ব্রেকআউট (উল্টো দিকের সংকেত)");
+    if (o.kind === "PA" && n - 1 - o.i0 <= 2) w(o.dir, 0.1 * o.strength / 100 * 2, o.label + (o.dir > 0 ? " বুলিশ" : " বেয়ারিশ"));
+  });
+  var cons = I.objs.filter(function (o) { return o.kind === "CONS"; })[0];
+  if (cons) { b *= 0.6; ev.push({ d: 0, w: 0, t: "কনসলিডেশন/রেঞ্জ — সংকেত দুর্বল ধরা হয়েছে (×০.৬)" }); }
+  b = Math.max(-1, Math.min(1, b));
+  var v = Math.abs(b) >= 0.30 ? (b > 0 ? "BUY" : "SELL") : "NO TRADE";
+  ev.sort(function (x, y) { return Math.abs(y.d * y.w) - Math.abs(x.d * x.w); });
+  return { bias: b, verdict: v, ev: ev.slice(0, 6), cons: !!cons };
+}
+
+function zoneSeries(P, M) {
+  var n = P.n, Z = new Array(n), i, j;
+  for (i = 0; i < n; i++) Z[i] = 0;
+  function add(lo, hi, dir, from, to, v) {
+    var tol = 0.1 * (hi - lo), e = to < 0 ? n : Math.min(n, to), q;
+    for (q = Math.max(0, from); q < e; q++) if (P.c[q] >= lo - tol && P.c[q] <= hi + tol) Z[q] += dir * v;
+  }
+  M.obs.forEach(function (ob) { add(ob.lo, ob.hi, ob.dir, ob.t + 1, ob.mit, 0.5); });
+  M.sd.forEach(function (z) { add(z.lo, z.hi, z.dir, z.k + 1, z.end, 0.5); });
+  M.fvgs.forEach(function (g) { add(g.lo, g.hi, g.dir, g.i + 3, g.end, 0.25); });
+  for (i = 0; i < n; i++) Z[i] = Math.max(-1, Math.min(1, Z[i]));
+  return Z;
+}
+/* ---- Phase 3: পরিসংখ্যান, OHLC পূর্বাভাস, ওয়াক-ফরওয়ার্ড (শুধু বন্ধ ক্যান্ডেল) ---- */
+function numAsc(a, b) { return a - b; }
+function qnt(s, q) { var n = s.length; if (!n) return 0; var x = (n - 1) * q, lo = Math.floor(x), hi = Math.ceil(x); return s[lo] + (s[hi] - s[lo]) * (x - lo); }
+/* i পর্যন্ত (i সহ) শেষ ২০০টা বন্ধ ক্যান্ডেল থেকে: σ(বডি), গ্যাপ σ, উপরে/নিচে এক্সকারশন কোয়ান্টাইল */
+function candleStats(P, i) {
+  if (!P._st) P._st = [];
+  if (P._st[i]) return P._st[i];
+  var br = [], hu = [], hd = [], gp = [], q, m = 0, s = 0, g = 0, gs = 0;
+  for (q = Math.max(0, i - 199); q <= i; q++) {
+    br.push(P.c[q] / P.o[q] - 1); hu.push(P.h[q] / P.o[q] - 1); hd.push(1 - P.l[q] / P.o[q]);
+    if (q > 0) gp.push(P.o[q] / P.c[q - 1] - 1);
+  }
+  br.forEach(function (x) { m += x; }); m /= br.length;
+  br.forEach(function (x) { s += (x - m) * (x - m); });
+  gp.forEach(function (x) { g += x; }); g = gp.length ? g / gp.length : 0;
+  gp.forEach(function (x) { gs += (x - g) * (x - g); });
+  var sigma = Math.sqrt(s / Math.max(1, br.length - 1)); if (!(sigma > 0)) sigma = 0.001;
+  var gsd = Math.sqrt(gs / Math.max(1, gp.length - 1)); if (!(gsd > 0)) gsd = sigma * 0.05;
+  hu.sort(numAsc); hd.sort(numAsc);
+  var st = { sigma: sigma, gsd: gsd, hu: [qnt(hu, 0.1), qnt(hu, 0.5), qnt(hu, 0.9)], hd: [qnt(hd, 0.1), qnt(hd, 0.5), qnt(hd, 0.9)] };
+  P._st[i] = st; return st;
+}
+/* OHLC পূর্বাভাস: p = বডি UP সম্ভাবনা, o0 = প্রত্যাশিত ওপেন, wide = ওপেন অনিশ্চিত হলে বাড়তি প্রসার */
+function fcOHLC(st, p, o0, oSd, wide) {
+  var mu = st.sigma * normInv(Math.min(0.999, Math.max(0.001, p)));
+  var o = o0, c = o * (1 + mu), w = 1.2816 * st.sigma * (wide || 1) * o, ow = 1.2816 * oSd * o;
+  var r = { o: o, oLo: o - ow, oHi: o + ow, c: c, cLo: c - w, cHi: c + w, mu: mu };
+  r.h = Math.max(o * (1 + st.hu[1]), o, c); r.hHi = Math.max(o * (1 + st.hu[2]), r.h); r.hLo = Math.min(Math.max(o * (1 + st.hu[0]), o), r.h);
+  r.l = Math.min(o * (1 - st.hd[1]), o, c); r.lLo = Math.min(o * (1 - st.hd[2]), r.l); r.lHi = Math.max(Math.min(o * (1 - st.hd[0]), o), r.l);
+  return r;
+}
+function fcArr(r) { return [r.o, r.c, r.h, r.l, r.cLo, r.cHi, r.hLo, r.hHi, r.lLo, r.lHi, r.oLo, r.oHi]; }
+function ohlcValid(r) { return r.h >= Math.max(r.o, r.c) - 1e-9 && r.l <= Math.min(r.o, r.c) + 1e-9 && r.h >= r.l; }
+
+var MODEL_VER = "v2.0";
+/* খরচ ধরা হয় প্রতি ট্রেডে (এন্ট্রি+এক্সিট): ফি ০.১০%×২ + স্প্রেড ০.০২% + স্লিপেজ ০.০১%×২ = ০.২৪% */
+var COST = { fee: 0.0010, spread: 0.0002, slip: 0.0001 };
+function costRT() { return 2 * COST.fee + COST.spread + 2 * COST.slip; }
+function ohlcMetrics(items, lo, hi, h) {
+  var fk = h === 2 ? "f2" : "f", ak = h === 2 ? "a2" : "a", n = 0, bad = 0, q, k;
+  var map = [[0, 0], [2, 1], [3, 2], [1, 3]], nm = ["o", "h", "l", "c"], ci = [[10, 11], [6, 7], [8, 9], [4, 5]];
+  var ae = [0, 0, 0, 0], se = [0, 0, 0, 0], cv = [0, 0, 0, 0], nv = 0;
+  for (q = lo; q < hi; q++) {
+    var it = items[q], f = it[fk], a = it[ak]; if (!f || !a) continue;
+    n++;
+    if (!(f[2] >= Math.max(f[0], f[1]) - 1e-9 && f[3] <= Math.min(f[0], f[1]) + 1e-9)) bad++;
+    for (k = 0; k < 4; k++) {
+      var e = Math.abs(f[map[k][0]] - a[map[k][1]]) / a[map[k][1]];
+      ae[k] += e; se[k] += e * e;
+      if (a[map[k][1]] >= f[ci[k][0]] && a[map[k][1]] <= f[ci[k][1]]) cv[k]++;
+    }
+    nv += Math.abs(f[0] - a[3]) / a[3];                // নাইভ বেসলাইন: বন্ধ = এখনকার ক্লোজ
+  }
+  var o = { n: n, bad: bad, mae: {}, rmse: {}, cov: {}, naiveC: n ? nv / n : NaN };
+  for (k = 0; k < 4; k++) { o.mae[nm[k]] = n ? ae[k] / n : NaN; o.rmse[nm[k]] = n ? Math.sqrt(se[k] / n) : NaN; o.cov[nm[k]] = n ? cv[k] / n : NaN; }
+  return o;
+}
+function tradeStats(rets) {
+  var n = rets.length, w = 0, gp = 0, gl = 0, eq = 0, pk = 0, dd = 0, s = 0, q;
+  for (q = 0; q < n; q++) { var x = rets[q]; s += x; if (x > 0) { w++; gp += x; } else gl += -x; eq += x; if (eq > pk) pk = eq; if (pk - eq > dd) dd = pk - eq; }
+  return { n: n, win: n ? w / n : NaN, pf: gl > 0 ? gp / gl : (gp > 0 ? Infinity : NaN), avg: n ? s / n : NaN, dd: dd, total: s };
+}
+function dirMetrics(items, lo, hi) {
+  var n = 0, hit = 0, tp = 0, tn = 0, pos = 0, neg = 0, br = 0, upN = 0, pvH = 0, pvN = 0, cH = 0, cN = 0, q, cr = costRT();
+  var mR = [], aR = [], pR = [];
+  for (q = lo; q < hi; q++) {
+    var it = items[q], pu = it.p >= 0.5 ? 1 : 0; n++;
+    if (it.y) { pos++; if (pu) tp++; } else { neg++; if (!pu) tn++; }
+    if (pu === it.y) hit++;
+    br += (it.p - it.y) * (it.p - it.y); upN += it.y;
+    if (it.pv >= 0) { pvN++; if (it.pv === it.y) pvH++; }
+    if (it.yc >= 0) { cN++; if ((it.pc >= 0.5 ? 1 : 0) === it.yc) cH++; }
+    if (it.nb >= 30 && Math.abs(it.p - 0.5) >= 0.04) mR.push((pu ? 1 : -1) * it.r - cr);
+    aR.push(it.r - cr);
+    if (it.pv >= 0) pR.push((it.pv ? 1 : -1) * it.r - cr);
+  }
+  var tpr = pos ? tp / pos : NaN, tnr = neg ? tn / neg : NaN;
+  return { n: n, hit: hit, wrong: n - hit, acc: n ? hit / n : NaN, bal: (isNaN(tpr) || isNaN(tnr)) ? NaN : (tpr + tnr) / 2, brier: n ? br / n : NaN, brier50: 0.25,
+    accUp: n ? upN / n : NaN, accPrev: pvN ? pvH / pvN : NaN, accC2C: cN ? cH / cN : NaN, nC2C: cN,
+    trade: tradeStats(mR), tradeAllLong: tradeStats(aR), tradePrev: tradeStats(pR), cost: cr };
+}
+function wfMetrics(items, sg) { return { train: dirMetrics(items, sg.train[0], sg.train[1]), val: dirMetrics(items, sg.val[0], sg.val[1]), test: dirMetrics(items, sg.test[0], sg.test[1]) }; }
+
+function wfEval(P, IND, trendAt, zoneAt) {
+  var n = P.n, u = [], nn = [], uc = [], nc = [], u2 = [], n2 = [], bAt = [], b, i, j;
+  for (b = 0; b < NBK; b++) { u.push(0); nn.push(0); uc.push(0); nc.push(0); u2.push(0); n2.push(0); }
+  var R = { n: 0, hit: 0, cn: 0, chit: 0, up: 0, prevHit: 0, prevN: 0, cats: null, items: [] };
+  function body(k) { return P.c[k] > P.o[k] ? 1 : P.c[k] < P.o[k] ? 0 : -1; }
+  for (i = WARM; i <= n - 2; i++) {
+    var cp = compAt(IND, i, trendAt, zoneAt);
+    b = bucketS(cp.S); bAt[i] = b;
+    j = i - 2;                                           // হরাইজন-২ লেবেল: j+2 = i এখন বন্ধ
+    if (j >= WARM && bAt[j] !== undefined && body(i) >= 0) { n2[bAt[j]]++; u2[bAt[j]] += body(i); }
+    var p = (u[b] + SHRINK / 2) / (nn[b] + SHRINK), pc = (uc[b] + SHRINK / 2) / (nc[b] + SHRINK), p2 = (u2[b] + SHRINK / 2) / (n2[b] + SHRINK);
+    var y = body(i + 1), yc = P.c[i + 1] > P.c[i] ? 1 : P.c[i + 1] < P.c[i] ? 0 : -1;
     if (y < 0) continue;
     R.n++; R.up += y;
     if ((p >= 0.5 ? 1 : 0) === y) R.hit++;
     if (nn[b] >= 30 && Math.abs(p - 0.5) >= 0.03) { R.cn++; if ((p >= 0.5 ? 1 : 0) === y) R.chit++; }
-    var py = P.c[i] > P.o[i] ? 1 : P.c[i] < P.o[i] ? 0 : -1;
+    var py = body(i);
     if (py >= 0) { R.prevN++; if (py === y) R.prevHit++; }
+    var st = candleStats(P, i), f1 = fcOHLC(st, p, P.c[i], st.gsd, 1);
+    var it = { i: i, y: y, yc: yc, p: p, pc: pc, p2: p2, pv: py, nb: nn[b], r: P.c[i + 1] / P.o[i + 1] - 1,
+      f: fcArr(f1), a: [P.o[i + 1], P.h[i + 1], P.l[i + 1], P.c[i + 1]], y2: -1, f2: null, a2: null };
+    if (i + 2 <= n - 1) {
+      it.y2 = body(i + 2);
+      var f2 = fcOHLC(st, p2, f1.c, Math.sqrt(st.sigma * st.sigma + st.gsd * st.gsd), Math.SQRT2);
+      it.f2 = fcArr(f2); it.a2 = [P.o[i + 2], P.h[i + 2], P.l[i + 2], P.c[i + 2]];
+    }
+    R.items.push(it);
     u[b] += y; nn[b]++;
+    if (yc >= 0) { uc[b] += yc; nc[b]++; }
   }
-  R.u = u; R.nn = nn;
+  if (n - 3 >= WARM && bAt[n - 3] !== undefined && body(n - 1) >= 0) { n2[bAt[n - 3]]++; u2[bAt[n - 3]] += body(n - 1); }
+  R.u = u; R.nn = nn; R.uc = uc; R.nc = nc; R.u2 = u2; R.n2 = n2;
   return R;
 }
+/* ক্রমানুসারে ৩ ভাগ: ৪০% ট্রেন (শেখা), ৩০% ভ্যালিডেশন (জোন A/B বাছাই), ৩০% আউট-অব-স্যাম্পল */
+function wfSegs(items) { var m = items.length, s1 = Math.floor(m * 0.4), s2 = Math.floor(m * 0.7); return { train: [0, s1], val: [s1, s2], test: [s2, m] }; }
+function wfAcc(items, lo, hi) { var h = 0, k = 0; for (var q = lo; q < hi; q++) { k++; if ((items[q].p >= 0.5 ? 1 : 0) === items[q].y) h++; } return { n: k, hit: h, acc: k ? h / k : NaN }; }
 
 function strengthOf(edge, n, agree) {
   if (n < 30 || edge < 0.03) return { k: "weak", l: "Weak (দুর্বল)" };
@@ -1874,33 +2482,50 @@ function strengthOf(edge, n, agree) {
   return { k: "medium", l: "Medium (মাঝারি)" };
 }
 
-function predictEngine(P, IND, M, key, nowMs) {
+function predictEngine(P, IND, M, key, nowMs, fc) {
   var n = P.n, E = { ok: false };
   var tfms = TFMS[key], now = nowMs || Date.now();
   if (n < WARM + 40 || !M || !M.ok) { E.why = "ডেটা কম"; return E; }
+  // P = শুধু বন্ধ ক্যান্ডেল। fc = এখন চলমান (অসম্পূর্ণ) ক্যান্ডেল, না থাকলে null
   var lastT = P.t[n - 1];
-  var forming = now < lastT + tfms;                 // শেষ ক্যান্ডেল এখনো চলমান?
-  var fi = forming ? n - 1 : n;                     // যে ক্যান্ডেলের পূর্বাভাস
-  var i = fi - 1;                                   // ফিচারের ক্যান্ডেল (সর্বশেষ বন্ধ)
-  var wf = wfEval(P, IND, M.trendAt);
-  var cp = compAt(IND, i, M.trendAt), b = bucketS(cp.S);
+  var forming = !!fc;
+  var fi = n;                                       // যে ক্যান্ডেলের পূর্বাভাস (চলমান বা পরের)
+  var i = n - 1;                                    // ফিচারের ক্যান্ডেল (সর্বশেষ বন্ধ)
+  var Zs = zoneSeries(P, M), wf0 = wfEval(P, IND, M.trendAt), wf1 = wfEval(P, IND, M.trendAt, Zs);
+  var sg0 = wfSegs(wf0.items), sg1 = wfSegs(wf1.items);
+  var v0 = wfAcc(wf0.items, sg0.val[0], sg0.val[1]), v1 = wfAcc(wf1.items, sg1.val[0], sg1.val[1]);
+  var a0 = v0.n ? v0.acc : 0, a1 = v1.n ? v1.acc : 0;
+  var useZ = v1.n >= 100 && a1 >= a0 + 0.005;       // জোন ঢুকবে কিনা: শুধু ভ্যালিডেশন অংশের ফল দেখে (আউট-অব-স্যাম্পল ছোঁয়া হয় না)
+  var wf = useZ ? wf1 : wf0, sg = useZ ? sg1 : sg0;
+  var cp = compAt(IND, i, M.trendAt, useZ ? Zs : null), b = bucketS(cp.S);
   var p0 = (wf.u[b] + SHRINK / 2) / (wf.nn[b] + SHRINK);
+  var pC = (wf.uc[b] + SHRINK / 2) / (wf.nc[b] + SHRINK), p2 = (wf.u2[b] + SHRINK / 2) / (wf.n2[b] + SHRINK);
   var dir0 = p0 >= 0.5 ? "up" : "down", edge = Math.abs(p0 - 0.5);
+  var dirN = edge < 0.02 ? "neutral" : dir0;         // ৪৮–৫২% = NEUTRAL (দিক নেই)
 
   var cats = CATS.map(function (ct) { return { k: ct.k, name: ct.name, w: ct.w, s: cp.cats[ct.k] }; });
   cats.push({ k: "S", name: "মার্কেট স্ট্রাকচার (BOS/CHOCH)", w: W_STRUCT, s: cp.cats.S });
+  if (useZ) cats.push({ k: "Z", name: "জোন (Order Block, Supply/Demand, FVG)", w: W_ZONE, s: cp.cats.Z });
   var agreeN = 0, totN = 0;
   cats.forEach(function (ct) { if (Math.abs(ct.s) > 0.05) { totN++; if ((ct.s > 0) === (dir0 === "up")) agreeN++; } });
   var agree = totN ? agreeN / totN : 0;
   var st = strengthOf(edge, wf.nn[b], agree);
 
-  // এক ক্যান্ডেলের রিটার্নের স্ট্যান্ডার্ড ডেভিয়েশন (সর্বশেষ ২০০ বন্ধ ক্যান্ডেল)
-  var s = 0, q, cntq = 0, mean = 0, vals = [];
-  for (q = Math.max(0, i - 199); q <= i; q++) { vals.push(P.c[q] / P.o[q] - 1); }
-  vals.forEach(function (x) { mean += x; }); mean /= vals.length;
-  vals.forEach(function (x) { s += (x - mean) * (x - mean); });
-  var sigma = Math.sqrt(s / Math.max(1, vals.length - 1));
-  if (!(sigma > 0)) sigma = 0.001;
+  var st0 = candleStats(P, i), sigma = st0.sigma;
+  var f1 = fcOHLC(st0, p0, fc ? fc.o : P.c[i], st0.gsd, 1);
+  var f2 = fcOHLC(st0, p2, f1.c, Math.sqrt(st0.sigma * st0.sigma + st0.gsd * st0.gsd), Math.SQRT2);
+  // অনিশ্চয়তা = ATR%-এর শেষ ২০০ ক্যান্ডেলে র‍্যাঙ্ক
+  var ar = [], q2, atrNow = P.atr[i] / P.c[i], rk = 0;
+  for (q2 = Math.max(15, i - 199); q2 <= i; q2++) { if (isFinite(P.atr[q2])) { ar.push(P.atr[q2] / P.c[q2]); } }
+  ar.forEach(function (x) { if (x <= atrNow) rk++; }); rk = ar.length ? rk / ar.length : 0.5;
+  var volC = rk >= 0.67 ? "high" : rk <= 0.33 ? "low" : "mid";
+  var adxV = P.adx[i], trC = isFinite(adxV) && adxV >= 22 ? "trend" : "side";
+  var unc = { k: volC, l: volC === "high" ? "বেশি" : volC === "low" ? "কম" : "মাঝারি", rank: rk };
+  // OHLC পরিসরের নির্ভরযোগ্যতা = ওয়াক-ফরওয়ার্ডে আসলে কতবার বাস্তব মান পরিসরে ছিল (আউট-অব-স্যাম্পল অংশে)
+  var oc = ohlcMetrics(wf.items, sg.test[0], sg.test[1], 1);
+  if (oc.n < 60) oc = ohlcMetrics(wf.items, sg.val[0], sg.val[1], 1);
+  var ocN = ohlcMetrics(wf.items, sg.test[0], sg.test[1], 2);
+  if (ocN.n < 60) ocN = ohlcMetrics(wf.items, sg.val[0], sg.val[1], 2);
 
   // কারণ তালিকা
   var why = [];
@@ -1923,11 +2548,14 @@ function predictEngine(P, IND, M, key, nowMs) {
   why.push({ tone: 0, t: "ইতিহাসে ঠিক এমন অবস্থায় (" + wf.nn[b] + " বার) পরের ক্যান্ডেল UP ছিল " + Math.round((wf.u[b] / Math.max(1, wf.nn[b])) * 100) + "%" });
   var tally = { bull: cp.bull, bear: cp.bear, neu: cp.neu };
 
-  var target = forming ? lastT : lastT + tfms;
+  var target = forming ? fc.t : lastT + tfms;
   Object.assign(E, {
-    ok: true, call: wf.nn[b] >= 30 && edge >= 0.04, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, edge: edge,
+    zinfo: { use: useZ, a0: a0, a1: a1, n: v1.n }, ok: true, call: wf.nn[b] >= 30 && edge >= 0.04, i: i, fi: fi, forming: forming, S: cp.S, cats: cats, bucket: b, nbN: wf.nn[b], p0: p0, dir0: dir0, dirN: dirN, pC: pC, p2: p2, edge: edge,
     str: st.k, strL: st.l, agree: agree, sigma: sigma, wf: wf, why: why, tally: tally,
-    target: target, close: target + tfms, tfms: tfms, openPx: forming ? P.o[n - 1] : null
+    target: target, close: target + tfms, tfms: tfms, openPx: forming ? fc.o : null,
+    fcur: fc ? { h: fc.h, l: fc.l } : null, prevClose: P.c[i], st: st0,
+    cur: f1, nxt: f2, unc: unc, cond: { t: trC, v: volC }, ver: MODEL_VER,
+    oc: oc, ocN: ocN, segs: sg, wfm: wfMetrics(wf.items, sg), exch: null
   });
   return E;
 }
@@ -1942,8 +2570,17 @@ function engLive(E, livePx, nowMs) {
   var z = (rNow + mu0 * (1 - f)) / sd;
   var p = Math.min(0.85, Math.max(0.15, normCdf(z)));
   var center = livePx * (1 + mu0 * (1 - f)), sp = livePx * sd;
+  // close-to-close (আগের ক্লোজ থেকে): গ্যাপ ধরে একই মডেল
+  var rNowC = livePx / E.prevClose - 1, muC = E.sigma * normInv(Math.min(0.999, Math.max(0.001, E.pC)));
+  var pLC = Math.min(0.85, Math.max(0.15, normCdf((rNowC + muC * (1 - f)) / sd)));
+  // চলমান ক্যান্ডেলের লাইভ OHLC: ওপেন বাস্তব, হাই/লো এ পর্যন্ত যা হয়েছে তার নিচে/উপরে নামবে না
+  var st = E.st, rs = Math.sqrt(rem), hiSo = Math.max(E.fcur ? E.fcur.h : livePx, livePx), loSo = Math.min(E.fcur ? E.fcur.l : livePx, livePx);
+  var oh = { o: open, oLo: open, oHi: open, c: center, cLo: center - 1.2816 * sp, cHi: center + 1.2816 * sp };
+  oh.h = Math.max(hiSo, livePx * (1 + st.hu[1] * rs), center); oh.hHi = Math.max(hiSo, livePx * (1 + st.hu[2] * rs), oh.h); oh.hLo = Math.min(Math.max(hiSo, livePx * (1 + st.hu[0] * rs)), oh.h);
+  oh.l = Math.min(loSo, livePx * (1 - st.hd[1] * rs), center); oh.lLo = Math.min(loSo, livePx * (1 - st.hd[2] * rs), oh.l); oh.lHi = Math.max(Math.min(loSo, livePx * (1 - st.hd[0] * rs)), oh.l);
+  oh.h = Math.max(oh.h, open, oh.c); oh.l = Math.min(oh.l, open, oh.c);
   return {
-    f: f, rNow: rNow, p: p, dir: p >= 0.5 ? "up" : "down", open: open,
+    pC: pLC, ohlc: oh, f: f, rNow: rNow, p: p, dir: p >= 0.5 ? "up" : "down", dirN: Math.abs(p - 0.5) < 0.02 ? "neutral" : (p >= 0.5 ? "up" : "down"), open: open,
     r68: [center - sp, center + sp], r95: [center - 1.96 * sp, center + 1.96 * sp],
     remain: Math.max(0, Math.round((E.close - now) / 1000))
   };
@@ -1962,6 +2599,7 @@ function gradePred(arr, L, now) {
   var tfms = TFMS[L.key], cd = L.cd, n = cd.length, changed = false;
   arr.forEach(function (r) {
     if (r.st !== "open" || r.sym !== L.base || r.tf !== L.key) return;
+    if (r.ex && L.src && r.ex !== L.src) return;          // অন্য এক্সচেঞ্জের ডেটা দিয়ে যাচাই নয়
     if (now < r.close + 5000) return;                   // ক্যান্ডেল এখনো বন্ধ হয়নি
     var c = null, j;
     for (j = n - 1; j >= 0; j--) {
@@ -1969,7 +2607,7 @@ function gradePred(arr, L, now) {
       if (cd[j].t < r.target) break;
     }
     if (c && c.t + tfms <= now) {
-      r.o = c.o; r.c = c.c;
+      r.o = c.o; r.c = c.c; r.ao = { o: c.o, h: c.h, l: c.l, c: c.c, cc: c.c > (cd[j - 1] ? cd[j - 1].c : c.o) };
       r.act = c.c > c.o ? "up" : c.c < c.o ? "down" : "flat";
       r.st = "done"; changed = true;
     } else if (!c && now > r.close + 3 * tfms) { r.st = "expired"; changed = true; }
@@ -1986,9 +2624,19 @@ function trackPred(L, nowMs) {
     if (!rec) {
       rec = {
         k: key, sym: L.base, tf: L.key, target: E.target, close: E.close, seen: now, seenF: lv.f, early: lv.f <= 0.25,
-        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN, call: !!E.call }, v: [], st: "open"
+        pre: { p: E.p0, dir: E.dir0, str: E.str, edge: E.edge, n: E.nbN, call: !!E.call, neu: E.dirN === "neutral", pC: E.pC }, v: [], st: "open",
+        ex: L.src, ver: E.ver, ft: "cur", cond: E.cond, fo: fcArr(E.cur)
       };
       arr.push(rec); changed = true;
+    }
+    // পরের পুরোপুরি-গঠিত ক্যান্ডেলের পূর্বাভাস: একবারই সংরক্ষণ (ক্যান্ডেল শুরুর আগে), পরে বদলানো হয় না
+    var nk = L.base + "|" + L.key + "|" + (E.target + E.tfms) + "|n", has = false;
+    for (q = 0; q < arr.length; q++) if (arr[q].k === nk) has = true;
+    if (!has) {
+      arr.push({ k: nk, sym: L.base, tf: L.key, target: E.target + E.tfms, close: E.target + 2 * E.tfms, seen: now, seenF: 0, early: false,
+        pre: { p: E.p2, dir: E.p2 >= 0.5 ? "up" : "down", str: E.str, edge: Math.abs(E.p2 - 0.5), n: E.nbN, call: false, neu: Math.abs(E.p2 - 0.5) < 0.02 }, v: [], st: "open",
+        ex: L.src, ver: E.ver, ft: "next", cond: E.cond, fo: fcArr(E.nxt) });
+      changed = true;
     }
     if (rec.st === "open") {
       var lastV = rec.v[rec.v.length - 1];
@@ -2002,17 +2650,18 @@ function trackPred(L, nowMs) {
   }
   if (changed) writePred(arr);
   if (E && E.ok) {
-    var w = readWF(); w[L.base + "|" + L.key] = { n: E.wf.n, hit: E.wf.hit, cn: E.wf.cn, chit: E.wf.chit, at: now };
+    var w = readWF(); w[L.base + "|" + L.key] = { n: E.wf.n, hit: E.wf.hit, cn: E.wf.cn, chit: E.wf.chit, at: now, ex: L.src, oos: { n: E.wfm.test.n, acc: E.wfm.test.acc, bal: E.wfm.test.bal, br: E.wfm.test.brier } };
     save(WF_KEY, JSON.stringify(w));
   }
   return arr;
 }
 function accStats(arr, f) {
-  var o = { n: 0, call: [0, 0], pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0 };
+  var o = { n: 0, call: [0, 0], pre: [0, 0], early: [0, 0], fin: [0, 0], by: { weak: [0, 0], medium: [0, 0], strong: [0, 0] }, open: 0, neu: 0 };
   arr.forEach(function (r) {
     if (f && !f(r)) return;
     if (r.st === "open") { o.open++; return; }
     if (r.st !== "done" || r.act === "flat") return;
+    if (r.pre.neu) { o.neu++; return; }                    // NEUTRAL = দিক বলা হয়নি, সঠিকতায় গোনা হয় না
     var hit = r.pre.dir === r.act ? 1 : 0;
     o.n++; o.pre[0]++; o.pre[1] += hit;
     if (r.pre.call) { o.call[0]++; o.call[1] += hit; }
@@ -2026,8 +2675,8 @@ function accStats(arr, f) {
 
 
 /* ================= AI ইঞ্জিন ৪: চার্ট ম্যাপ ও কার্ড ================= */
-var AI = { nVis: 80, off: 0, trade: "ai", layers: { sr: 1, sd: 1, ob: 1, fvg: 1, fib: 1, str: 1, pat: 1, sw: 1 }, hover: -1 };
-var AI_LAYERS = [["sr", "S/R"], ["sd", "Supply/Demand"], ["ob", "Order Block"], ["fvg", "FVG"], ["fib", "Fibonacci"], ["str", "HH/HL/BOS/CHOCH"], ["pat", "প্যাটার্ন"], ["sw", "Liquidity Sweep"]];
+var AI = { nVis: 80, off: 0, trade: "ai", layers: { sr: 1, sd: 1, ob: 1, fvg: 1, fib: 1, str: 1, pat: 1, sw: 1, tl: 1, lq: 1, bo: 1, pa: 1 }, hover: -1 };
+var AI_LAYERS = [["sr", "S/R"], ["sd", "Supply/Demand"], ["ob", "Order Block"], ["fvg", "FVG"], ["fib", "Fibonacci"], ["str", "HH/HL/BOS/CHOCH"], ["pat", "প্যাটার্ন"], ["sw", "Liquidity Sweep"], ["tl", "ট্রেন্ডলাইন"], ["lq", "লিকুইডিটি জোন"], ["bo", "ব্রেকআউট/রিটেস্ট"], ["pa", "প্রাইস অ্যাকশন"]];
 var AI_TRADE = [["ai", "ট্রেড: AI পূর্বাভাস"], ["auto", "ট্রেড: জোন-অটো"], ["buy", "ট্রেড: BUY"], ["sell", "ট্রেড: SELL"], ["off", "ট্রেড: বন্ধ"]];
 (function () {
   try {
@@ -2047,7 +2696,8 @@ function aiPlan(L) {
   return {
     side: up ? "BUY" : "SELL", bull: up, entry: px, sl: px - sg * risk, tp: [px + sg * risk, px + sg * 2 * risk, px + sg * 3 * risk], rr: [1, 2, 3], risk: risk,
     score: Math.min(100, Math.round(50 + E.edge * 400)), inZone: true, aligned: true, labels: ["AI পূর্বাভাস"], zone: { lo: px, hi: px }, ai: true,
-    exitT: E.target, p: up ? lv.p : 1 - lv.p, weak: !E.call, late: lv.f > 0.8, f: lv.f
+    exitT: E.target, p: up ? lv.p : 1 - lv.p, weak: !E.call, late: lv.f > 0.8, f: lv.f,
+    active: !!(L.U && L.U.decision === (up ? "BUY" : "SELL"))
   };
 }
 function aiCall(L) {
@@ -2140,7 +2790,43 @@ function drawMap() {
     var sup = z.p < P.c[n - 1], c = sup ? cBuy : cSell;
     hline(z.p, X(Math.max(z.i0, s)), plotW, c, [], 1.2);
     g.fillStyle = c; g.textAlign = "left"; g.fillText(sup ? "S" : "R", Math.max(X(Math.max(z.i0, s)) + 2, 3), Y(z.p) - 6);
+    fr(X(Math.max(z.i0, s)), Y(z.p + 0.15 * M.atr), plotW, Y(z.p - 0.15 * M.atr), c, 0.1);   // হাইলাইটেড S/R জোন (±0.15 ATR)
   });
+  var IT = M.intel;
+  if (IT) {
+    var ex = n + 6, cdim = cMut;
+    // ট্রেন্ডলাইন (সবুজ = ঊর্ধ্বমুখী, লাল = নিম্নমুখী) — ডানদিকে বাড়ানো
+    if (AI.layers.tl) IT.objs.forEach(function (o) {
+      if (o.kind === "TL") {
+        var c0 = o.dir > 0 ? cBuy : cSell, ye = o.a.p + o.sl * (ex - o.a.i);
+        g.strokeStyle = c0; g.lineWidth = 1.8; g.setLineDash([]); g.beginPath(); g.moveTo(X(o.a.i), Y(o.a.p)); g.lineTo(X(ex), Y(ye)); g.stroke();
+        [o.a, o.b].forEach(function (q) { g.fillStyle = c0; g.beginPath(); g.arc(X(q.i), Y(q.p), 3, 0, 6.3); g.fill(); });
+        g.fillStyle = c0; g.textAlign = "right"; g.fillText((o.dir > 0 ? "TL↗" : "TL↘") + " ×" + o.react, plotW - 4, Y(o.a.p + o.sl * (n + 3 - o.a.i)) + (o.dir > 0 ? 12 : -9));
+      } else if (o.kind === "SW") {
+        var cs = o.dir > 0 ? cBuy : cSell; g.globalAlpha = 0.8; hline(o.p, X(Math.max(o.i0, s)), plotW, cs, [1, 4], 1); g.globalAlpha = 1;
+        g.fillStyle = cs; g.textAlign = "left"; g.fillText(o.dir > 0 ? "PL" : "PH", Math.max(X(Math.max(o.i0, s)) + 2, 3), Y(o.p) + (o.dir > 0 ? 9 : -6));
+      }
+    });
+    // লিকুইডিটি জোন (সমান হাই/লো) — হলুদ/নিরপেক্ষ ডটেড ব্যান্ড
+    if (AI.layers.lq) IT.objs.forEach(function (o) {
+      if (o.kind !== "LQ") return;
+      var x0 = X(Math.max(o.i0, s)); fr(x0, Y(o.hi), plotW, Y(o.lo), cHold, 0.16); hline(o.p, x0, plotW, cHold, [2, 3], 1);
+      g.fillStyle = cHold; g.textAlign = "left"; g.fillText(o.dir < 0 ? "EQH 💧" : "EQL 💧", Math.max(x0 + 3, 3), Y(o.p) + (o.dir < 0 ? -7 : 9));
+    });
+    // ব্রেকআউট/রিটেস্ট ও ফলস ব্রেকআউট
+    if (AI.layers.bo) IT.objs.forEach(function (o) {
+      if (o.kind !== "BO" && o.kind !== "FBO") return;
+      var c1 = o.dir > 0 ? cBuy : cSell, x1 = X(Math.max(o.i0, s));
+      hline(o.p, x1, plotW, c1, [6, 3], 1.2);
+      pill(o.kind === "FBO" ? "FBO ✗" : (o.status.indexOf("টিকেছে") >= 0 ? "BO✓RT" : "BO·RT?"), plotW - 4, Y(o.p) + (o.dir > 0 ? 11 : -11), c1, "#fff", "r");
+    });
+    // কনসলিডেশন বক্স
+    if (AI.layers.pa) IT.objs.forEach(function (o) {
+      if (o.kind !== "CONS") return;
+      var x0 = X(Math.max(o.i0, s)); fr(x0, Y(o.hi), plotW, Y(o.lo), cMut, 0.12); g.setLineDash([3, 3]); g.strokeStyle = cMut; g.strokeRect(x0, Math.min(Y(o.hi), Y(o.lo)), plotW - x0, Math.abs(Y(o.hi) - Y(o.lo))); g.setLineDash([]);
+      g.fillStyle = cMut; g.textAlign = "left"; g.fillText("Consolidation", Math.max(x0 + 3, 3), Math.min(Y(o.hi), Y(o.lo)) + 8);
+    });
+  }
 
   // ক্যান্ডেল
   var bw = Math.max(1, Math.min(cw * 0.7, 14));
@@ -2151,6 +2837,15 @@ function drawMap() {
     var yo = Y(P.o[i]), yc = Y(P.c[i]); g.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yo - yc)));
   }
 
+  // প্রাইস-অ্যাকশন মার্কার (সর্বশেষ বন্ধ ক্যান্ডেল, ভিড় এড়াতে দৃশ্যমান ক্যান্ডেলে সর্বোচ্চ ৮টা)
+  if (AI.layers.pa && IT) {
+    var short = { ENG: "E", PIN: "P", STR: "S", BOC: "B", MOM: "M", REJ: "R" }, shown = {}, cnt = 0;
+    IT.objs.filter(function (o) { return o.kind === "PA" && o.i0 >= s && o.i0 < e; }).sort(function (a2, b2) { return b2.strength - a2.strength; }).forEach(function (o) {
+      if (cnt >= 8 || shown[o.i0]) return; shown[o.i0] = 1; cnt++;
+      var c2 = o.dir > 0 ? cBuy : cSell, yy = o.dir > 0 ? Y(P.l[o.i0]) + 11 : Y(P.h[o.i0]) - 11;
+      g.fillStyle = c2; g.textAlign = "center"; g.fillText((o.dir > 0 ? "▲" : "▼") + short[o.sub], X(o.i0), yy);
+    });
+  }
   botDraw(g, L, s, e, X, Y, cBuy, cSell, cFg);
 
   // মার্কেট স্ট্রাকচার লেবেল ও BOS/CHOCH
@@ -2192,21 +2887,35 @@ function drawMap() {
     pill(pt.name + (pt.conf ? " ✓" : ""), X(pt.pts[Math.floor(pt.pts.length / 2)].i), Y(pt.pts[Math.floor(pt.pts.length / 2)].p) + (pt.dir > 0 ? 18 : -18), c, "#fff", "c");
   });
 
+  // চলতি দামের লাইন
+  if (off === 0) { g.globalAlpha = 0.7; hline(P.c[n - 1], 0, plotW, P.c[n - 1] >= P.o[n - 1] ? cBuy : cSell, [1, 3], 1); g.globalAlpha = 1; }
+  // BUY/SELL দৃশ্যকল্প (সক্রিয় না হলে ফিকে ও ‘নিষ্ক্রিয়’ লেখা)
+  if (off === 0 && L.SU) ["buy", "sell"].forEach(function (sd) {
+    var S0 = L.SU[sd]; if (!S0 || !S0.zone) return;
+    var act = L.U && L.U.decision === (sd === "buy" ? "BUY" : "SELL"), cz = sd === "buy" ? cBuy : cSell, xz = X(Math.max(s, n - 30));
+    if (T && T.side === (sd === "buy" ? "BUY" : "SELL") && T.ai) return;      // এই দিকের ট্রেড আগেই পুরো আঁকা
+    g.globalAlpha = act ? 0.14 : 0.06; g.fillStyle = cz; g.fillRect(xz, Math.min(Y(S0.zone.hi), Y(S0.zone.lo)), plotW - xz, Math.abs(Y(S0.zone.hi) - Y(S0.zone.lo)) || 1); g.globalAlpha = 1;
+    g.setLineDash([4, 3]); g.strokeStyle = cz; g.globalAlpha = act ? 0.9 : 0.5; g.strokeRect(xz, Math.min(Y(S0.zone.hi), Y(S0.zone.lo)), plotW - xz, Math.abs(Y(S0.zone.hi) - Y(S0.zone.lo)) || 1); g.setLineDash([]); g.globalAlpha = 1;
+    g.fillStyle = cz; g.textAlign = "left"; g.fillText((sd === "buy" ? "BUY" : "SELL") + " দৃশ্যকল্প" + (act ? "" : " (নিষ্ক্রিয়)"), xz + 3, Math.min(Y(S0.zone.hi), Y(S0.zone.lo)) + 8);
+  });
   // ট্রেড সেটআপ (Entry / SL / TP) — সবুজ লাভের জোন, লাল SL জোন
   if (T && off === 0) {
     var x0t = X(n - 1) - cw / 2, ent = T.entry, tpL = T.tp[T.tp.length - 1];
-    if (!T.inZone) fr(x0t, Y(T.zone.hi), plotW, Y(T.zone.lo), cPred, 0.12);
-    fr(x0t, Y(ent), plotW, Y(tpL), cBuy, 0.17);
-    fr(x0t, Y(ent), plotW, Y(T.sl), cSell, 0.17);
+    var tf = T.ai && !T.active ? 0.4 : 1;           // চূড়ান্ত সিদ্ধান্ত NO TRADE/ভিন্ন হলে ট্রেড-লাইন ফিকে (নিষ্ক্রিয়)
+    if (!T.inZone) fr(x0t, Y(T.zone.hi), plotW, Y(T.zone.lo), cPred, 0.12 * tf);
+    fr(x0t, Y(ent), plotW, Y(tpL), cBuy, 0.17 * tf);
+    fr(x0t, Y(ent), plotW, Y(T.sl), cSell, 0.17 * tf);
+    g.globalAlpha = tf;
     hline(ent, x0t, plotW, cFg, [], 1.4);
     hline(T.sl, x0t, plotW, cSell, [5, 3], 1.4);
     T.tp.forEach(function (p) { hline(p, x0t, plotW, cBuy, [5, 3], 1.2); });
+    g.globalAlpha = 1;
   }
   g.restore();
 
   // ট্রেডের লেবেল (অক্ষের পাশে)
   if (T && off === 0) {
-    var rx = plotW - 3, tl = [{ t: "ENTRY (" + T.side + ") " + fmt(T.entry), y: Y(T.entry), bg: cFg, fg: cSurf }, { t: "STOP LOSS " + fmt(T.sl), y: Y(T.sl), bg: cSell, fg: "#fff" }];
+    var rx = plotW - 3, tl = [{ t: "ENTRY (" + T.side + (T.ai && !T.active ? ", নিষ্ক্রিয়" : "") + ") " + fmt(T.entry), y: Y(T.entry), bg: cFg, fg: cSurf }, { t: "STOP LOSS " + fmt(T.sl), y: Y(T.sl), bg: cSell, fg: "#fff" }];
     T.tp.forEach(function (p, j) { tl.push({ t: "TARGET " + (j + 1) + " · " + rr(T.rr[j]) + "  " + fmt(p), y: Y(p), bg: cBuy, fg: "#fff" }); });
     tl.sort(function (a, b) { return a.y - b.y; });
     var q2, minY = padT + 8, maxY = padT + plotH - 8;
@@ -2251,7 +2960,15 @@ function mapReadout() {
   var c = L.cd[k], ch = c.o ? c.c / c.o - 1 : 0;
   box.textContent = fmtFull(P.t[k]) + " | O " + fmt(c.o) + " H " + fmt(c.h) + " L " + fmt(c.l) + " C " + fmt(c.c) + " (" + (ch >= 0 ? "+" : "") + pct(ch, 2) + ")";
 }
-function redrawMap() { drawMap(); mapReadout(); }
+var mapSigLast = "", botVer = 0;
+function mapSig() {
+  var L = last, cv = $("mapChart"); if (!L || !L.P) return "";
+  var P = L.P, n = P.n, th = document.documentElement.getAttribute("data-theme") || "", dk = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? 1 : 0;
+  return [L.base, L.key, L.src, n, P.t[n - 1], P.c[n - 1], P.h[n - 1], P.l[n - 1], AI.nVis, AI.off, AI.hover, JSON.stringify(AI.layers), AI.trade, cv.clientWidth, cv.clientHeight,
+    L.U ? L.U.decision + L.U.score : "", L.ENG && L.ENG.live ? Math.round(L.ENG.live.p * 1000) : "", botVer, th, dk, window.devicePixelRatio].join("|");
+}
+/* একই ডেটা/ভিউ হলে ক্যানভাস আবার আঁকা হয় না (অপ্রয়োজনীয় রিড্র নেই) */
+function redrawMap(force) { var sg = mapSig(); if (!force && sg && sg === mapSigLast) { mapReadout(); return; } mapSigLast = sg; drawMap(); mapReadout(); }
 
 /* ---------- কার্ড ---------- */
 function kvRow(dl, k, v, cls) {
@@ -2262,6 +2979,79 @@ function tmStr(t) { var d = new Date(t); return two(d.getHours()) + ":" + two(d.
 function pd0(pu) { return (1 - pu) * 100; }
 function dirTxt(d) { return d === "up" ? "UP 🟢" : "DOWN 🔴"; }
 
+
+/* দুই ধরনের পূর্বাভাস + OHLC + আউট-অব-স্যাম্পল যাচাই (শুধু মাপা সংখ্যা) */
+function fcTable(f, lbl) {
+  var tb = el("table", "tbl"), hr = el("tr", "");
+  ["", "প্রত্যাশিত", "নিচের সীমা", "উপরের সীমা"].forEach(function (t) { hr.appendChild(el("th", "", t)); }); tb.appendChild(hr);
+  [["Open", f.o, f.oLo, f.oHi], ["High", f.h, f.hLo, f.hHi], ["Low", f.l, f.lLo, f.lHi], ["Close", f.c, f.cLo, f.cHi]].forEach(function (r) {
+    var tr = el("tr", ""); tr.appendChild(el("td", "b", r[0])); for (var k = 1; k < 4; k++) tr.appendChild(el("td", "", fmt(r[k]))); tb.appendChild(tr);
+  });
+  return tb;
+}
+function renderFcBlocks(box, L, E) {
+  var lv = E.live, tl = TFS[L.key].label, pu = lv.p, pc = lv.pC;
+  box.appendChild(el("h3", "", "দিক: বডি বনাম ক্লোজ-টু-ক্লোজ"));
+  var dl = el("dl", "kv");
+  kvRow(dl, "বডির দিক (ক্লোজ > ওপেন) UP / DOWN", Math.round(pu * 100) + "% / " + Math.round((1 - pu) * 100) + "%");
+  kvRow(dl, "আগের ক্লোজের তুলনায় (ক্লোজ-টু-ক্লোজ) UP / DOWN", Math.round(pc * 100) + "% / " + Math.round((1 - pc) * 100) + "%");
+  kvRow(dl, "কনফিডেন্স (বডি)", Math.round(Math.max(pu, 1 - pu) * 100) + "% — সম্ভাবনা, নিশ্চয়তা নয়");
+  kvRow(dl, "সিগনাল স্ট্রেংথ (আলাদা মাপ)", E.strL + " · ইতিহাসে একই অবস্থা " + E.nbN + " বার");
+  box.appendChild(dl);
+  var T1 = E.forming ? "চলমান" : "পরের (শুরু হতে যাচ্ছে)";
+  box.appendChild(el("h3", "", "ফোরকাস ১: " + T1 + " " + tl + " ক্যান্ডেল (" + tmStr(E.target) + " – " + tmStr(E.close) + ")"));
+  box.appendChild(el("div", "small", E.forming ? "লাইভ: ওপেন বাস্তব; হাই/লো এ পর্যন্ত যা হয়েছে তার নিচে/উপরে নামে না; বাকি সময় অনুযায়ী পরিসর ছোট হয়।" : "ক্যান্ডেল এখনো শুরু হয়নি; ওপেন ≈ আগের ক্লোজ ধরা হয়েছে।"));
+  box.appendChild(fcTable(E.forming ? lv.ohlc : E.cur, "cur"));
+  box.appendChild(el("h3", "", "ফোরকাস ২: পরের পুরোপুরি-গঠিত " + tl + " ক্যান্ডেল (" + tmStr(E.target + E.tfms) + " – " + tmStr(E.target + 2 * E.tfms) + ")"));
+  var p2 = E.p2, d2 = Math.abs(p2 - 0.5) < 0.02 ? "NEUTRAL" : (p2 >= 0.5 ? "UP" : "DOWN");
+  box.appendChild(el("div", "small", "এটা চলমান ক্যান্ডেল বন্ধ হওয়ার পরের ক্যান্ডেল — তাই অনিশ্চয়তা বেশি। বডির দিক: " + d2 + " (UP " + Math.round(p2 * 100) + "%)। ক্যান্ডেল শুরুর আগের ডেটায় তৈরি, এরপর বদলায় না।"));
+  box.appendChild(fcTable(E.nxt, "nxt"));
+  var oc = E.oc, vd = ohlcValid(E.nxt) && ohlcValid(E.cur) && ohlcValid(lv.ohlc);
+  var kd = el("dl", "kv");
+  kvRow(kd, "অনিশ্চয়তা (ATR% র‍্যাঙ্ক)", E.unc.l + " (" + Math.round(E.unc.rank * 100) + " পার্সেন্টাইল)");
+  kvRow(kd, "বন্ধ-দামের ৮০% পরিসর আসলে কতবার ঠিক ছিল (আউট-অব-স্যাম্পল)", oc.n ? pct(oc.cov.c, 0) + " (" + oc.n + " টা ক্যান্ডেলে)" : "ডেটা কম");
+  kvRow(kd, "OHLC নিয়ম (H ≥ O,C ; L ≤ O,C)", vd ? "প্রযোজ্য — ঠিক আছে" : "লঙ্ঘিত!", vd ? "" : "neg");
+  box.appendChild(kd);
+  box.appendChild(el("p", "small", "এগুলো প্রত্যাশিত মান ও সম্ভাব্য পরিসর — নিশ্চিত ভবিষ্যৎ দাম নয়। দাম পরিসরের বাইরেও যেতে পারে।"));
+  renderWFBlock(box, E);
+}
+function renderWFBlock(box, E) {
+  var m = E.wfm, t = m.test, v = m.val, tr = m.train, oc = E.oc, ocN = E.ocN;
+  box.appendChild(el("h3", "", "ওয়াক-ফরওয়ার্ড যাচাই (ইতিহাসে ক্রমানুসারে, ভবিষ্যৎ-ডেটা ছাড়া)"));
+  box.appendChild(el("div", "small", "ডেটা কালানুক্রমে ৩ ভাগ: শেখা " + tr.n + " · ভ্যালিডেশন " + v.n + " (জোন A/B বাছাই এখানে) · আউট-অব-স্যাম্পল টেস্ট " + t.n + " (বাছাইয়ে ছোঁয়া হয়নি)। শুধু বন্ধ ক্যান্ডেল গোনা।"));
+  var tb = el("table", "tbl"), hr = el("tr", "");
+  ["মাপ", "ভ্যালিডেশন", "আউট-অব-স্যাম্পল"].forEach(function (x) { hr.appendChild(el("th", "", x)); }); tb.appendChild(hr);
+  function row(n, a, b) { var r = el("tr", ""); r.appendChild(el("td", "", n)); r.appendChild(el("td", "", a)); r.appendChild(el("td", "b", b)); tb.appendChild(r); }
+  function f3(x) { return isFinite(x) ? x.toFixed(3) : "–"; }
+  row("মোট পূর্বাভাস", String(v.n), String(t.n));
+  row("সঠিক / ভুল", v.hit + " / " + v.wrong, t.hit + " / " + t.wrong);
+  row("দিকের সঠিকতা", pct(v.acc, 1), pct(t.acc, 1));
+  row("Balanced accuracy", pct(v.bal, 1), pct(t.bal, 1));
+  row("Brier স্কোর (৫০/৫০ = 0.250)", f3(v.brier), f3(t.brier));
+  row("বেসলাইন: সবসময় UP", pct(v.accUp, 1), pct(t.accUp, 1));
+  row("বেসলাইন: আগের ক্যান্ডেলের রঙ", pct(v.accPrev, 1), pct(t.accPrev, 1));
+  row("ক্লোজ-টু-ক্লোজ সঠিকতা", pct(v.accC2C, 1), pct(t.accC2C, 1));
+  box.appendChild(tb);
+  var t2 = el("table", "tbl"), h2 = el("tr", "");
+  ["ট্রেড সিমুলেশন (শুধু কল)", "মডেল", "সবসময় BUY", "আগের রঙ"].forEach(function (x) { h2.appendChild(el("th", "", x)); }); t2.appendChild(h2);
+  function r2(n, g) { var r = el("tr", ""); r.appendChild(el("td", "", n)); [t.trade, t.tradeAllLong, t.tradePrev].forEach(function (o) { r.appendChild(el("td", "", g(o))); }); t2.appendChild(r); }
+  r2("ট্রেড সংখ্যা", function (o) { return String(o.n); });
+  r2("Win rate", function (o) { return pct(o.win, 0); });
+  r2("Profit factor", function (o) { return isFinite(o.pf) ? o.pf.toFixed(2) : "–"; });
+  r2("গড় লাভ/ক্ষতি", function (o) { return isFinite(o.avg) ? (o.avg * 100).toFixed(3) + "%" : "–"; });
+  r2("সর্বোচ্চ ড্রডাউন", function (o) { return (o.dd * 100).toFixed(1) + "%"; });
+  box.appendChild(t2);
+  var od = el("dl", "kv");
+  kvRow(od, "OHLC ত্রুটি (ফোরকাস ১, % দামের)", oc.n ? "MAE: O " + pct(oc.mae.o, 3) + " H " + pct(oc.mae.h, 3) + " L " + pct(oc.mae.l, 3) + " C " + pct(oc.mae.c, 3) : "ডেটা কম");
+  kvRow(od, "RMSE", oc.n ? "O " + pct(oc.rmse.o, 3) + " H " + pct(oc.rmse.h, 3) + " L " + pct(oc.rmse.l, 3) + " C " + pct(oc.rmse.c, 3) : "–");
+  kvRow(od, "নাইভ বেসলাইন (বন্ধ = আগের ক্লোজ) MAE", oc.n ? pct(oc.naiveC, 3) + " বনাম মডেল " + pct(oc.mae.c, 3) : "–");
+  kvRow(od, "পরিসরে বাস্তব মান (নামিনাল ৮০%/ক্লোজ; হাই/লো ১০–৯০%)", oc.n ? "O " + pct(oc.cov.o, 0) + " H " + pct(oc.cov.h, 0) + " L " + pct(oc.cov.l, 0) + " C " + pct(oc.cov.c, 0) : "–");
+  kvRow(od, "ফোরকাস ২ (পরের গঠিত ক্যান্ডেল) বন্ধ-দাম পরিসর কভারেজ", ocN.n ? pct(ocN.cov.c, 0) + " · MAE " + pct(ocN.mae.c, 3) : "–");
+  kvRow(od, "খরচ ধরা (প্রতি ট্রেড)", "ফি ০.১০%×২ + স্প্রেড ০.০২% + স্লিপেজ ০.০১%×২ = " + (t.cost * 100).toFixed(2) + "%");
+  box.appendChild(od);
+  box.appendChild(el("p", "small", "এই সংখ্যাগুলো এই চার্টের ইতিহাস থেকে মাপা, ভবিষ্যতের গ্যারান্টি নয়। নমুনা ছোট হলে সংখ্যা অস্থির। মডেল বেসলাইনের চেয়ে ভালো না হলে বুঝতে হবে সত্যিকারের সুবিধা প্রমাণিত নয়।"));
+}
+
 function renderPred() {
   var L = last, E = L.ENG, box = $("pdBody"); clearEl(box);
   if (!E || !E.ok) { box.appendChild(el("p", "small", "পূর্বাভাসের জন্য যথেষ্ট ক্যান্ডেল নেই (কমপক্ষে ~২৫০টা লাগে)।")); return; }
@@ -2270,7 +3060,7 @@ function renderPred() {
   var top = el("div", "predbox");
   var cl = true, weak = !E.call;
   top.appendChild(el("div", "arrow " + (cl ? (up ? "up" : "dn") : "nc"), cl ? (up ? "▲" : "▼") : "?"));
-  var tb = el("div", ""); tb.appendChild(el("div", "big " + (cl ? (up ? "up" : "dn") : "nc"), "NEXT CANDLE: " + dirTxt(lv.dir)));
+  var tb = el("div", ""); tb.appendChild(el("div", "big " + (cl ? (up ? "up" : "dn") : "nc"), "NEXT CANDLE: " + (lv.dirN === "neutral" ? "NEUTRAL (প্রায় ৫০/৫০)" : dirTxt(lv.dir))));
   if (weak) tb.appendChild(el("div", "small", "⚠️ সংকেত দুর্বল (Weak): ইতিহাসে এমন অবস্থায় সঠিকতা কম, প্রায় কয়েন-টসের মতো। ঝুঁকি বেশি।"));
   tb.appendChild(el("div", "small", E.forming ? "চলমান " + TFS[L.key].label + " ক্যান্ডেল কোন রঙে বন্ধ হবে (এখনো চলছে)" : "পরের " + TFS[L.key].label + " ক্যান্ডেল"));
   top.appendChild(tb); box.appendChild(top);
@@ -2286,7 +3076,9 @@ function renderPred() {
   kvRow(dl, "শুরুর আগের পূর্বাভাস", dirTxt(E.dir0) + " " + Math.round((E.dir0 === "up" ? E.p0 : 1 - E.p0) * 100) + "%");
   kvRow(dl, "ক্যান্ডেল এতটুকু এগিয়েছে", Math.round(lv.f * 100) + "%");
   kvRow(dl, "ইতিহাসে একই অবস্থা", E.nbN + " বার");
+  kvRow(dl, "OB/Supply/Demand/FVG জোন হিসাবে", E.zinfo.use ? "ধরা হচ্ছে (ব্যাকটেস্ট " + pct(E.zinfo.a1, 1) + " বনাম বাদে " + pct(E.zinfo.a0, 1) + ")" : "ধরা হচ্ছে না (ব্যাকটেস্টে উন্নতি নেই: " + pct(E.zinfo.a1, 1) + " বনাম বাদে " + pct(E.zinfo.a0, 1) + ")");
   box.appendChild(dl);
+  renderFcBlocks(box, L, E);
   var pl = aiPlan(L);
   box.appendChild(el("h3", "", "এন্ট্রি সিগনাল (পূর্বাভাস অনুযায়ী)"));
   if (pl.side) {
@@ -2294,6 +3086,7 @@ function renderPred() {
     pd.textContent = "UP " + Math.round(pu * 100) + "% বনাম DOWN " + Math.round(pd0(pu)) + "% → সম্ভাবনা বেশি " + (pl.bull ? "UP-এর, তাই 🟢 কিনুন (BUY)" : "DOWN-এর, তাই 🔴 বেচুন (SELL)") + "। এন্ট্রি এখনকার দামে ≈ " + fmt(pl.entry) + " · SL " + fmt(pl.sl) + " · লক্ষ্য " + pl.tp.map(fmt).join(" / ") + " (RR ১:১ / ১:২ / ১:৩) · ট্রেডে ঢোকার ঠিক " + TFS[L.key].label + " পরে ট্রেড বন্ধ হবে (এখন ঢুকলে ≈ " + tmStr(Date.now() + E.tfms) + "-এ)।" + (pl.weak ? " ⚠️ সংকেত দুর্বল।" : "") + (pl.late ? " (ক্যান্ডেলের " + Math.round(pl.f * 100) + "% পার, বাকি সময় কম, ঝুঁকি বেশি)" : "");
     box.appendChild(pd);
   } else box.appendChild(el("p", "small", pl.why + "।"));
+  if (L.U) box.appendChild(el("p", L.U.decision === pl.side ? "small" : "warn", L.U.decision === pl.side ? "✅ চূড়ান্ত সিদ্ধান্ত: " + L.U.decision + " (সক্রিয়)" : "⛔ উপরের দিকটা শুধু সম্ভাবনার ঝোঁক। চূড়ান্ত সিদ্ধান্ত: NO TRADE — " + L.U.blockers.slice(0, 2).join("; ")));
   if (lv.f > 0.5) box.appendChild(el("p", "warn", "ক্যান্ডেলের অর্ধেকের বেশি পার হয়ে গেছে, তাই এখনকার সংখ্যা চলমান দামের দিকে ঝুঁকে আছে। সঠিকতার হিসাব শুধু ক্যান্ডেল শুরুর আগের পূর্বাভাস দিয়ে করা হয়।"));
   box.appendChild(el("h3", "", "কেন এই পূর্বাভাস"));
   var ul = el("ul", "rs");
@@ -2324,12 +3117,14 @@ function renderSetups() {
   if (!SU || (!SU.buy && !SU.sell)) { box.appendChild(el("p", "small", "এখন কোনো পরিষ্কার সেটআপ নেই।")); return; }
   [SU.buy, SU.sell].forEach(function (T) {
     if (!T) return;
-    var wrap = el("div", "su " + (T.bull ? "buy" : "sell") + (SU.primary === T ? " pri" : ""));
+    var UU = L.U, inact = !UU || UU.decision !== T.side;
+    var wrap = el("div", "su " + (T.bull ? "buy" : "sell") + (SU.primary === T ? " pri" : "") + (inact ? " off" : ""));
     var hd = el("div", "suh"); hd.appendChild(el("b", "", T.side + " সেটআপ")); hd.appendChild(el("span", "small", (SU.primary === T ? "সেরা স্কোর · " : "") + "স্কোর " + Math.round(T.score) + "/100")); wrap.appendChild(hd);
     var dl = el("dl", "kv");
     kvRow(dl, T.bull ? "কেনার জোন" : "বেচার জোন", fmt(T.zone.lo) + " – " + fmt(T.zone.hi)); kvRow(dl, "Entry", fmt(T.entry)); kvRow(dl, "Stop Loss", fmt(T.sl) + " (" + pct(T.riskPct / 100, 2) + " ঝুঁকি)", "neg");
     T.tp.forEach(function (p, j) { kvRow(dl, "TP" + (j + 1) + " (RR " + rr(T.rr[j]) + ")", fmt(p), "pos"); });
     kvRow(dl, "অবস্থা", T.status);
+    kvRow(dl, "চূড়ান্ত সিদ্ধান্তের সাথে", inact ? "⛔ নিষ্ক্রিয় (চূড়ান্ত সিদ্ধান্ত: " + (UU ? UU.decision : "–") + ") — বিকল্প দৃশ্যকল্প মাত্র" : "✅ সক্রিয় — চূড়ান্ত সিদ্ধান্তের সাথে মিলেছে");
     wrap.appendChild(dl);
     var why = "জোনের ভিত্তি: " + T.labels.join(" + ") + (T.aligned ? "; ট্রেন্ডের পক্ষে" : "; ট্রেন্ডের বিপক্ষে (সাবধান)") + (T.predAligned ? "; AI পূর্বাভাসের সাথে মিল আছে" : "") + (T.obst ? "; পথে বাধা: " + T.obst.n + " @ " + fmt(T.obst.p) : "");
     wrap.appendChild(el("p", "small", why));
@@ -2342,21 +3137,27 @@ function renderHist() {
   var L = last, box = $("hsBody"); clearEl(box);
   var arr = readPred().filter(function (r) { return r.sym === L.base; }), wf = readWF();
   var tb = el("table", "tbl"), hr = el("tr", "");
-  ["TF", "যাচাই", "সঠিক", "সব পূর্বাভাস", "শুধু কল", "ব্যাকটেস্ট"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
+  ["TF", "যাচাই", "সঠিক", "সব পূর্বাভাস", "শুধু কল", "ব্যাকটেস্ট", "আউট-অব-স্যাম্পল"].forEach(function (t) { hr.appendChild(el("th", "", t)); });
   tb.appendChild(hr);
   TF_BUTTONS.forEach(function (k) {
-    var o = accStats(arr, function (r) { return r.tf === k; }), w = wf[L.base + "|" + k];
+    var o = accStats(arr, function (r) { return r.tf === k && r.ft !== "next" && (!r.ex || r.ex === L.src); }), w = wf[L.base + "|" + k];
     var tr = el("tr", ""); tr.appendChild(el("td", "", k));
     tr.appendChild(el("td", "", String(o.n)));
     tr.appendChild(el("td", "", o.n ? o.pre[1] + "/" + o.n : "–"));
     tr.appendChild(el("td", "b", o.n >= 1 ? pct(o.pre[1] / o.n, 0) + (o.n < 20 ? " (কম ডেটা)" : "") : "–"));
     tr.appendChild(el("td", "", o.call[0] ? pct(o.call[1] / o.call[0], 0) + " (" + o.call[0] + ")" : "–"));
     tr.appendChild(el("td", "", w && w.n ? pct(w.hit / w.n, 1) + " (" + w.n + ")" : "–"));
+    tr.appendChild(el("td", "", w && w.oos && w.oos.n ? pct(w.oos.acc, 1) + " (" + w.oos.n + ")" : "–"));
     tb.appendChild(tr);
   });
   box.appendChild(tb);
-  var all = accStats(arr);
+  var all = accStats(arr, function (r) { return r.ft !== "next" && (!r.ex || r.ex === L.src); });
   var dl = el("dl", "kv");
+  var legacy = arr.filter(function (r) { return !r.ex; }).length;
+  if (legacy) kvRow(dl, "পুরনো রেকর্ড", legacy + " টা (এক্সচেঞ্জের নাম সংরক্ষিত ছিল না — গোনা হয়েছে, কিন্তু যাচাই করা যায় না)");
+  var nx = accStats(arr, function (r) { return r.ft === "next" && r.ex === L.src; });
+  kvRow(dl, "‘পরের গঠিত ক্যান্ডেল’ পূর্বাভাস (আলাদা)", nx.n ? nx.pre[1] + "/" + nx.n + " = " + pct(nx.pre[1] / nx.n, 0) + (nx.n < 20 ? " (কম ডেটা)" : "") : "যাচাই হয়নি");
+  if (all.neu) kvRow(dl, "NEUTRAL (দিক বলা হয়নি, গোনা হয়নি)", all.neu + " টা");
   kvRow(dl, "সব টাইমফ্রেম মিলিয়ে যাচাই হয়েছে", all.n + " টা");
   if (all.n) {
     kvRow(dl, "ক্যান্ডেল শুরুর ২৫% সময়ের মধ্যে ধরা", all.early[0] ? pct(all.early[1] / all.early[0], 0) + " (" + all.early[0] + " টা)" : "–");
@@ -2365,6 +3166,25 @@ function renderHist() {
   }
   kvRow(dl, "এখনো চলমান", all.open + " টা");
   box.appendChild(dl);
+  // বাজারের অবস্থা অনুযায়ী (পূর্বাভাসের সময় সংরক্ষিত)
+  box.appendChild(el("h3", "", "বাজারের অবস্থা অনুযায়ী সঠিকতা (" + L.key + ")"));
+  var cd2 = el("dl", "kv");
+  [["ট্রেন্ডিং (ADX≥22)", function (r) { return r.cond && r.cond.t === "trend"; }], ["সাইডওয়ে (ADX<22)", function (r) { return r.cond && r.cond.t === "side"; }],
+   ["বেশি ভোলাটিলিটি", function (r) { return r.cond && r.cond.v === "high"; }], ["কম ভোলাটিলিটি", function (r) { return r.cond && r.cond.v === "low"; }]].forEach(function (c) {
+    var x = accStats(arr, function (r) { return r.tf === L.key && r.ft !== "next" && r.ex === L.src && c[1](r); });
+    kvRow(cd2, c[0], x.n ? x.pre[1] + "/" + x.n + " = " + pct(x.pre[1] / x.n, 0) + (x.n < 20 ? " (কম ডেটা)" : "") : "যাচাই হয়নি");
+  });
+  box.appendChild(cd2);
+  // OHLC পূর্বাভাসের বাস্তব ত্রুটি (যাচাই হওয়া রেকর্ড থেকে)
+  var oe = arr.filter(function (r) { return r.st === "done" && r.ao && r.fo && r.tf === L.key && r.ex === L.src; });
+  if (oe.length) {
+    var mc = 0, mh = 0, ml = 0, cov = 0;
+    oe.forEach(function (r) { mc += Math.abs(r.fo[1] - r.ao.c) / r.ao.c; mh += Math.abs(r.fo[2] - r.ao.h) / r.ao.h; ml += Math.abs(r.fo[3] - r.ao.l) / r.ao.l; if (r.ao.c >= r.fo[4] && r.ao.c <= r.fo[5]) cov++; });
+    var od = el("dl", "kv"), q3 = oe.length;
+    kvRow(od, "OHLC পূর্বাভাস বনাম বাস্তব (" + q3 + " টা)", "বন্ধ MAE " + pct(mc / q3, 3) + " · হাই " + pct(mh / q3, 3) + " · লো " + pct(ml / q3, 3));
+    kvRow(od, "বন্ধ-দামের ৮০% পরিসরে বাস্তব ছিল", pct(cov / q3, 0) + (q3 < 20 ? " (কম ডেটা)" : ""));
+    box.appendChild(od);
+  }
   box.appendChild(el("h3", "", "সর্বশেষ যাচাই হওয়া পূর্বাভাস"));
   var done = arr.filter(function (r) { return r.st === "done"; }).slice(-12).reverse();
   if (!done.length) box.appendChild(el("p", "small", "এখনো কোনো ক্যান্ডেল পুরোপুরি বন্ধ হয়ে যাচাই হয়নি। পাতাটা খোলা রাখলে ক্যান্ডেল বন্ধ হওয়ার পর এখানে আসবে।"));
@@ -2402,19 +3222,21 @@ function renderInd() {
 
 function renderAI() {
   var L = last; if (!L) return;
-  var ok = L.M && L.M.ok;
-  ["mapCard", "pdCard", "suCard", "botCard", "hsCard", "inCard"].forEach(function (id) { $(id).hidden = !ok; });
+  var ok = L.M && L.M.ok && !(L.DQ && L.DQ.block);
+  var dw = $("dqWarn"); if (dw) { dw.textContent = dqText(L); dw.hidden = !(L.DQ && (L.DQ.block || L.DQ.notes.length)); dw.className = L.DQ && L.DQ.block ? "warn" : "small"; }
+  ["mapCard", "intelCard", "mtfCard", "pdCard", "suCard", "botCard", "hsCard", "inCard"].forEach(function (id) { $(id).hidden = !ok; });
   if (!ok) return;
-  redrawMap(); renderPred(); renderSetups(); renderBot(); renderHist(); renderInd();
+  redrawMap(); renderIntel(); renderMtf(); renderPred(); renderSetups(); renderBot(); renderHist(); renderInd();
   var T = aiTrade(L), tl = $("mapTitle");
   tl.textContent = "AI চার্ট ম্যাপ · " + sp0text(L);
   try { var cc = aiCall(L); document.title = (cc.k === "call" ? "🔔 " + cc.pl.side + " কল · " : "") + sp0text(L); } catch (e) {}
 }
 function sp0text(L) { var sp = splitSym(L.base); return sp.coin + "/" + sp.quote + " · " + TFS[L.key].label; }
 
-function aiBuildAnalysis(P, key, nowMs) {
-  var IND = buildInd(P), M = buildMap(P), ENG = predictEngine(P, IND, M, key, nowMs);
-  var SU = buildSetups(P, M, ENG);
+function aiBuildAnalysis(P, key, nowMs, fc, livePx) {
+  var IND = buildInd(P), M = buildMap(P), ENG = predictEngine(P, IND, M, key, nowMs, fc);
+  try { M.intel = buildIntel(P, M); } catch (ex) { M.intel = null; if (window.console) console.error(ex); }
+  var SU = buildSetups(P, M, ENG, livePx);
   return { IND: IND, M: M, ENG: ENG, SU: SU };
 }
 function aiNP(E) {
@@ -2485,7 +3307,7 @@ function aiInit() {
 var aiAutoAt = 0;
 
 /* ================= অটো ডেমো ট্রেডিং বট (নকল টাকা, আসল দাম) ================= */
-var BOT_KEY = "bot3", BOT_FEE = 0.002, BOT_FR = [0.5, 0.3, 0.2], BOT_MAXC = 100;
+var BOT_KEY = "bot3", BOT_FEE = 0.0024, BOT_FR = [0.5, 0.3, 0.2], BOT_MAXC = 100;
 function botRead() {
   var o; try { o = JSON.parse(load(BOT_KEY, "{}")); } catch (e) { o = {}; }
   if (!o || typeof o !== "object") o = {};
@@ -2500,10 +3322,15 @@ function botRead() {
   if (c.strong === undefined) c.strong = true;
   if (c.mode !== "setup") c.mode = "ai";
   if (c.needAI === undefined) c.needAI = false;
+  if (!(c.maxOpen >= 1)) c.maxOpen = 5;            // একসাথে সর্বোচ্চ খোলা ট্রেড
+  if (!(c.maxDayPct > 0)) c.maxDayPct = 5;         // দিনে সর্বোচ্চ ক্ষতি (শুরুর ব্যালেন্সের %)
+  if (!(c.minRR >= 1)) c.minRR = 1.5;              // সর্বনিম্ন RR (TP2)
+  if (!(c.maxRiskPct > 0)) c.maxRiskPct = 2;       // প্রতি ট্রেডে ঝুঁকি (ইকুইটির %)
+  if (!(c.maxAmtPct > 0)) c.maxAmtPct = 50;        // এক ট্রেডে ইকুইটির সর্বোচ্চ %, পুরো ব্যালেন্স কখনো নয়
   if (!Array.isArray(o.tr)) o.tr = [];
   return o;
 }
-function botWrite(o) { o.tr = o.tr.slice(-400); save(BOT_KEY, JSON.stringify(o)); }
+function botWrite(o) { botVer++; o.tr = o.tr.slice(-400); save(BOT_KEY, JSON.stringify(o)); }
 function botEquity(o) { var e = o.cfg.start; o.tr.forEach(function (t) { if (t.st === "closed") e += t.pnl; }); return e; }
 function botRem(t) { var r = 1, j; for (j = 0; j < t.hit; j++) r -= BOT_FR[j]; return Math.max(0, r); }
 function botClose(t, why, ts) {
@@ -2514,10 +3341,10 @@ function botStep(t, c, tfms, noTime) {
   var d = t.d, rem, first = c.t === t.entryT;
   if (!first) {
     if (d > 0 ? c.l <= t.sl : c.h >= t.sl) {
-      rem = botRem(t); t.R += rem * d * (t.sl - t.e) / t.rk; botClose(t, t.hit ? "BE" : "SL", c.t); return;
+      rem = botRem(t); t.R += rem * d * (t.sl - t.e) / t.rk; botClose(t, t.hit >= 2 ? "TRAIL (TP1-এ স্টপ)" : t.hit ? "BE" : "SL", c.t); return;
     }
     while (t.hit < 3 && (d > 0 ? c.h >= t.tp[t.hit] : c.l <= t.tp[t.hit])) {
-      t.R += BOT_FR[t.hit] * d * (t.tp[t.hit] - t.e) / t.rk; t.hit++; if (t.hit === 1) t.sl = t.e;
+      t.R += BOT_FR[t.hit] * d * (t.tp[t.hit] - t.e) / t.rk; t.hit++; if (t.hit === 1) t.sl = t.e; else if (t.hit === 2) t.sl = t.tp[0];   // ট্রেইলিং: TP1 ছুঁলে SL এন্ট্রিতে, TP2 ছুঁলে SL TP1-এ
     }
     if (t.hit >= 3) { botClose(t, "TP3", c.t); return; }
   }
@@ -2539,6 +3366,7 @@ function botStepAll(o, L, now) {
   var tfms = TFMS[L.key], ch = false;
   o.tr.forEach(function (t) {
     if (t.st !== "open" || t.sym !== L.base || t.tf !== L.key) return;
+    if (t.ex && L.src && t.ex !== L.src) return;          // অন্য এক্সচেঞ্জের ডেটা মেশানো হয় না
     L.cd.forEach(function (c) {
       if (t.st === "open" && (t.v2 ? c.t >= t.chk : c.t > t.chk) && c.t + tfms <= now) { botStep(t, c, tfms); t.chk = t.v2 ? c.t + tfms : c.t; ch = true; }
     });
@@ -2559,6 +3387,7 @@ function botEnter(o, L, now) {
     if (T.late) return no("ক্যান্ডেলের ৮০%-এর বেশি পার, বট এখন ঢোকে না। নতুন ক্যান্ডেলের অপেক্ষা");
     if (c.strong && T.weak) return no("সংকেত দুর্বল (Weak), বট শুধু জোরালো সংকেতে ট্রেড নেয়। সংকেত: " + T.side + " " + Math.round(T.p * 100) + "%");
   }
+  if (c.needU !== false && !(L.U && L.U.decision === T.side)) return no("চূড়ান্ত সিদ্ধান্ত " + (L.U ? L.U.decision : "–") + (L.U && L.U.blockers.length ? " — " + L.U.blockers[0] : ""));
   if (!T.inZone) return no("অপেক্ষা: দাম এখনো ভালো " + T.side + " জোনে আসেনি");
   if (T.score < c.minScore) return no("সেটআপের স্কোর " + Math.round(T.score) + ", কিন্তু লাগে " + c.minScore + "+");
   if (!T.aligned) return no("সেটআপ বড় ট্রেন্ডের উল্টো, তাই বাদ");
@@ -2570,11 +3399,21 @@ function botEnter(o, L, now) {
   var eq = botEquity(o); if (eq < c.amt) return no("ডেমো টাকা শেষ");
   var rp = T.risk / T.entry, free = eq - botLocked(o);
   if (free < c.amt * 0.999) return no("ফ্রি ব্যালেন্স কম (" + botNum(free) + " USDT আছে, প্রতি ট্রেডে লাগে " + c.amt + ")");
+  // ঝুঁকি-ব্যবস্থাপনা (শুধু পেপার ট্রেড)
+  if (!(T.bull ? T.sl < T.entry : T.sl > T.entry) || rp < 0.0005 || rp > 0.05) return no("স্টপ-লস অবৈধ (SL ঠিক দিকে নেই বা দূরত্ব ০.০৫%–৫% এর বাইরে)");
+  if (!(T.rr && T.rr[1] >= c.minRR)) return no("RR " + (T.rr ? T.rr[1] : "–") + " < সর্বনিম্ন " + c.minRR);
+  if (rp < botCostRT()) return no("লক্ষ্য খরচের (" + (botCostRT() * 100).toFixed(2) + "%) চেয়ে ছোট, ট্রেড বাদ");
+  if (o.tr.filter(function (t) { return t.st === "open"; }).length >= c.maxOpen) return no("একসাথে সর্বোচ্চ " + c.maxOpen + "টা খোলা ট্রেডের সীমা");
+  var dayStart = new Date(now); dayStart.setHours(0, 0, 0, 0);
+  var dayLoss = 0; o.tr.forEach(function (t) { if (t.st === "closed" && t.closeT >= dayStart.getTime() && t.pnl < 0) dayLoss += -t.pnl; });
+  if (dayLoss >= c.start * c.maxDayPct / 100) return no("আজকের সর্বোচ্চ ক্ষতির সীমা (" + c.maxDayPct + "%) ছুঁয়েছে, আজ আর নতুন ট্রেড নয়");
+  if (c.amt > eq * c.maxAmtPct / 100) return no("এক ট্রেডে ইকুইটির " + c.maxAmtPct + "%-এর বেশি লাগানো যায় না (পুরো ব্যালেন্স ঝুঁকিতে ফেলা হবে না)");
+  if (c.amt * rp > eq * c.maxRiskPct / 100) return no("এই ট্রেডে ঝুঁকি ইকুইটির " + c.maxRiskPct + "%-এর বেশি হয়ে যায়");
   var notional = c.amt;
   o.tr.push({
     id: L.base + "|" + L.key + "|" + now, sym: L.base, tf: L.key, side: T.side, d: T.bull ? 1 : -1, e: T.entry, sl: T.sl, sl0: T.sl,
     tp: T.tp.slice(), rr: T.rr.slice(), hit: 0, R: 0, rk: T.risk, notional: notional, riskUsd: notional * rp, score: Math.round(T.score),
-    labels: T.labels.slice(), entryT: lastT, chk: lastT, openedAt: now, st: "open", v2: true,
+    labels: T.labels.slice(), entryT: lastT, chk: lastT, openedAt: now, st: "open", v2: true, ex: L.src, ver: MODEL_VER,
     exitT: 0, exitAt: (T.ai || c.hold) ? now + TFMS[L.key] : 0
   });
   botWhy[K] = { r: "ট্রেডে ঢুকেছে", t: now };
@@ -2584,6 +3423,7 @@ function botTimeExit(o, L, now) {
   var tfms = TFMS[L.key], ch = false, px = L.S.live, n = L.P.n, lastT = L.P.t[n - 1];
   o.tr.forEach(function (t) {
     if (t.st !== "open" || t.sym !== L.base || t.tf !== L.key || !t.exitAt || now < t.exitAt || !(px > 0)) return;
+    if (t.ex && L.src && t.ex !== L.src) return;
     var cp = JSON.parse(JSON.stringify(t)), j;
     for (j = 0; j < L.cd.length; j++) if ((cp.v2 ? L.cd[j].t >= cp.chk : L.cd[j].t > cp.chk) && L.cd[j].t + tfms > now) botStep(cp, L.cd[j], tfms, true);
     if (cp.st === "closed") { var k; for (k in cp) t[k] = cp[k]; }
@@ -2599,6 +3439,7 @@ function botDue(L, now) {
 }
 var botPlan = {};
 function botRun(L, now) {
+  if (L.DQ && L.DQ.block) { botWhy[L.base + "|" + L.key] = { r: "ডেটা অবিশ্বস্ত, ট্রেড বন্ধ (" + L.DQ.issues.join("; ") + ")", t: now }; return; }
   if (L.SU) botPlan[L.base + "|" + L.key] = { t: now, px: L.S.live, buy: L.SU.buy, sell: L.SU.sell, pri: L.SU.primary ? L.SU.primary.side : null };
   var o = botRead(), a = botStepAll(o, L, now), x = botTimeExit(o, L, now), b = botEnter(o, L, now);
   if (a || x || b) botWrite(o);
@@ -2623,6 +3464,7 @@ function botVerdict(s) {
   return "সামান্য লাভ, কিন্তু যথেষ্ট জোরালো নয় (Profit Factor " + s.pf.toFixed(2) + ")। আরও ট্রেড জমতে দিন।";
 }
 function botFmtR(r) { return (r >= 0 ? "+" : "") + r.toFixed(2) + "R"; }
+function botCostRT() { return costRT(); }
 function botNum(x) { var a = Math.abs(x); return a === 0 ? "0.00" : a < 100 ? a.toFixed(4) : a.toFixed(2); }
 function botMoney(x) { return (x >= 0 ? "+" : "−") + botNum(x); }
 function botLocked(o) { var s = 0; o.tr.forEach(function (t) { if (t.st === "open") s += t.notional; }); return s; }
@@ -2688,7 +3530,7 @@ function renderBot() {
     var w = el("div", "su " + (t.d > 0 ? "buy" : "sell"));
     var hd = el("div", "suh"); hd.appendChild(el("b", "", t.side + " @ " + fmt(t.e))); hd.appendChild(el("span", "small", "স্কোর " + t.score)); w.appendChild(hd);
     var k = el("dl", "kv");
-    kvRow(k, "SL", fmt(t.sl) + (t.hit ? " (ব্রেক-ইভেন)" : ""), "neg"); kvRow(k, "TP1 / TP2 / TP3", t.tp.map(fmt).join(" / ") + " (" + t.hit + "/3 লেগেছে)", "pos");
+    kvRow(k, "SL", fmt(t.sl) + (t.hit >= 2 ? " (ট্রেইলিং: TP1-এ)" : t.hit ? " (ব্রেক-ইভেন)" : ""), "neg"); kvRow(k, "TP1 / TP2 / TP3", t.tp.map(fmt).join(" / ") + " (" + t.hit + "/3 লেগেছে)", "pos");
     kvRow(k, "এখনকার ফল", botFmtR(t.u) + " ≈ " + botMoney(t.u * t.riskUsd) + " " + cur, t.u >= 0 ? "pos" : "neg");
     kvRow(k, "ট্রেডে লাগানো", botNum(t.notional) + " " + cur);
     kvRow(k, "ঢুকেছে", fmtFull(t.openedAt));
@@ -2707,6 +3549,8 @@ function renderBot() {
     setTimeout(function () { botSpark(cv, o); }, 0);
   }
   box.appendChild(el("p", "small", "নিয়ম: বট শুধু আসল দামে নকল টাকা দিয়ে ট্রেড করে। প্রতি ট্রেডে " + o.cfg.amt + " " + cur + " লাগায় (ব্যালেন্স থেকে আটকে থাকে, ট্রেড শেষে আসল টাকা ± লাভ/লোকসান ফিরে আসে)। লাভ বা লোকসান দামের শতাংশ নড়াচড়ার সমান্তপাতিক: যেমন BTC ০.১% নড়লে ১ USDT-তে মাত্র ০.০০১ USDT, আর ফি ০.২% (ছোট নড়াচড়ায় ফি-তেই লাভ খেয়ে যায়)। " + (o.cfg.hold ? "প্রতিটা ট্রেড ঢোকার ঠিক এক টাইমফ্রেম পরে অটো বন্ধ হয় (১ মি ট্রেড ঢোকার ১ মিনিট পরে, ৫ মি ট্রেড ৫ মিনিট পরে ইত্যাদি) সেই মুহূর্তের আসল দামে; SL/TP আগে লাগলে আগেই বন্ধ, " : "") + " TP1-এ ৫০%, TP2-এ ৩০%, TP3-এ বাকিটা বেরোয়; TP1 লাগলে SL এন্ট্রিতে সরে যায়। এক ক্যান্ডেলে SL ও TP দুটোই ছুঁলে SL আগে ধরা হয় (খারাপ ধরে নেওয়া)। ফি ০.২% কাটা হয়। স্লিপেজ ধরা হয়নি, আসলে ফল এর চেয়ে একটু খারাপ হতে পারে। বট শুধু পাতা খোলা থাকলে নতুন ট্রেডে ঢোকে। খোলা কয়েনের সব টাইমফ্রেম (১ মি থেকে ১ দিন) একটা একটা করে নিজে স্ক্যান করে ট্রেড নেয়। স্পটে শর্ট (SELL) করা যায় না, SELL মানে ফিউচারস-ধরনের নকল ট্রেড।"));
+  var cf = o.cfg;
+  box.appendChild(el("p", "small", "ঝুঁকির সীমা: একসাথে সর্বোচ্চ " + cf.maxOpen + "টা ট্রেড · দিনে সর্বোচ্চ ক্ষতি " + cf.maxDayPct + "% · সর্বনিম্ন RR " + cf.minRR + " · প্রতি ট্রেডে ঝুঁকি ≤ ইকুইটির " + cf.maxRiskPct + "% · এক ট্রেডে ≤ " + cf.maxAmtPct + "%। খরচ ধরা: ফি ০.১০%×২ + স্প্রেড ০.০২% + স্লিপেজ ০.০১%×২। TP1 ছুঁলে SL এন্ট্রিতে, TP2 ছুঁলে SL TP1-এ উঠে (ট্রেইলিং)। একই ক্যান্ডেলে SL ও TP দুটোই ছুঁয়ে থাকলে ক্রম জানা যায় না, তাই ধরা হয় SL আগে লেগেছে (রক্ষণশীল ধারণা)। এটা সম্পূর্ণ নকল-টাকার সিমুলেশন — আসল KuCoin অর্ডার দেওয়ার কোনো কোড এই সাইটে নেই।"));
 }
 function botSpark(cv, o) {
   var w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
@@ -2773,16 +3617,15 @@ function botScan() {
     }).then(function () {
       if (!last || last.base !== base) return;
       botScanAt[base + "|" + k] = Date.now();
-      return (source === "kucoin" ? fetchKucoin(base, TFS[k]) : fetchBinance(base, TFS[k])).then(function (cd) {
-        var P = compute(cd), S = analyzeLatest(P), A = aiBuildAnalysis(P, k, Date.now());
-        if (A.ENG.ok) A.ENG.live = engLive(A.ENG, S.live, Date.now());
-        var L2 = { base: base, key: k, cd: cd, P: P, S: S, ENG: A.ENG, SU: A.SU, IND: A.IND, M: A.M };
+      if (Date.now() < kuCoolUntil) return;
+      return fetchCandles(base, k).then(function (raw) {
+        var L2 = analyzeTF(base, k, raw, Date.now());
         botRun(L2, Date.now());
-        try { trackPred(L2, Date.now()); } catch (e) {}
+        if (!L2.DQ.block) { try { trackPred(L2, Date.now()); } catch (e) {} }
       }).catch(function () {});
     });
   });
-  chain.then(function () { botScanning = false; if (last) { try { renderBot(); renderHist(); } catch (e) {} } }, function () { botScanning = false; });
+  chain.then(function () { botScanning = false; if (last) { try { renderBot(); renderHist(); } catch (e) {} } mtfScan(); mtfRefresh(); }, function () { botScanning = false; });
 }
 function botInit() {
   var o = botRead(), c = o.cfg;
@@ -2840,22 +3683,24 @@ function run(manual) {
     fetchCandles(base, key),
     useH ? fetchHtf(base, tf.htf).catch(function () { return null; }) : Promise.resolve(null)
   ]).then(function (res) {
-    var cd = res[0];
-    var P = compute(cd), S = analyzeLatest(P);
-    var H = res[1] ? analyzeLatest(compute(res[1])) : null;
+    var now0 = Date.now(), L0 = analyzeTF(base, key, res[0], now0), cd = L0.cd, P = L0.P, S = L0.S;
+    var hraw = res[1]; if (hraw && hraw.src !== res[0].src) hraw = null;      // উৎস আলাদা হলে উচ্চ টাইমফ্রেম মেশানো হয় না
+    var H = hraw ? analyzeLatest(compute(validateCandles(hraw, tf.htf, now0).cd)) : null;
     var BT = backtest(P, tf.h);
     var fin = applyGate(finalDecision(S, H), BT, $("strict").checked);
-    var A = null;
-    try { A = aiBuildAnalysis(P, key, Date.now()); if (A.ENG.ok) A.ENG.live = engLive(A.ENG, S.live, Date.now()); } catch (ex) { A = null; if (window.console) console.error(ex); }
-    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT, NP: aiNP(A && A.ENG), IND: A && A.IND, M: A && A.M, ENG: A && A.ENG, SU: A && A.SU };
+    var A = L0.A;
+    source = L0.src === "Binance" ? "binance" : "kucoin";
+    last = { base: base, key: key, htfKey: tf.htf, cd: cd, P: P, S: S, H: H, fin: fin, BT: BT, NP: aiNP(A && A.ENG), IND: L0.IND, M: L0.M, ENG: L0.ENG, SU: L0.SU, DQ: L0.DQ, src: L0.src, fetchedAt: L0.fetchedAt };
+    last.forming = L0.forming; last.fin0 = fin; applyUnified(last);
     $("dot").className = "dot on";
     track(last);
     try { if (A) trackPred(last, Date.now()); } catch (ex) { if (window.console) console.error(ex); }
     try { if (A) botRun(last, Date.now()); } catch (ex) { if (window.console) console.error(ex); }
     ppUpdatePrice(last);
     render();
-    setTimeout(botScan, 2500);
+    setTimeout(botScan, 2500); setTimeout(mtfScan, 2800);
   }).catch(function (err) {
+    if (last) { last.DQ = { block: true, stale: true, issues: ["সর্বশেষ আপডেট ব্যর্থ, দেখানো ডেটা পুরোনো"], notes: [], n: last.cd.length }; try { renderAI(); } catch (e2) {} }
     showError("ডেটা আনা যায়নি (" + (err && err.message ? err.message : "অজানা এরর") + "). কয়েনের নাম বা ইন্টারনেট দেখে আবার চেষ্টা করুন। সমস্যা থাকলে এই লেখাটা আমাকে পাঠান।");
   }).finally(function () {
     busy = false;
@@ -2883,7 +3728,7 @@ function run(manual) {
   var sp0 = load("pair", "BTC-USDT");
   if (/^[A-Z0-9]{2,10}(-[A-Z0-9]{2,6})?$/.test(sp0) && sp0 !== "USDT") $("pair").value = sp0.replace(/-USDT$/, "");
   $("capital").value = load("capital", "100"); $("risk").value = load("risk", "1");
-  $("proxy").value = load("proxy", "");
+  $("proxy").value = load("proxy", ""); $("fbOn").checked = load("fb", "0") === "1";
   $("live").checked = load("live", "1") === "1"; $("htfOn").checked = load("htf", "1") === "1";
   $("strict").checked = load("strict", "1") === "1"; $("rec").checked = load("rec", "1") === "1";
   markTf();
@@ -2896,6 +3741,7 @@ function run(manual) {
   $("proxy").addEventListener("change", function () {
     save("proxy", $("proxy").value.trim()); source = "kucoin"; kuFailAt = 0; run(true);
   });
+  $("fbOn").addEventListener("change", function () { save("fb", $("fbOn").checked ? "1" : "0"); run(true); });
   $("capital").addEventListener("input", renderSize);
   $("risk").addEventListener("input", renderSize);
   $("live").addEventListener("change", function () { save("live", $("live").checked ? "1" : "0"); schedule(); });
